@@ -1,10 +1,9 @@
 package challenges;
 
+import io.vertx.core.MultiMap;
+import io.vertx.ext.web.RequestBody;
 import io.vertx.ext.web.RoutingContext;
-import io.vertx.ext.web.validation.RequestParameters;
-import io.vertx.ext.web.validation.ValidationHandler;
 
-import java.util.Objects;
 
 
 /**
@@ -29,33 +28,24 @@ import java.util.Objects;
 public class Request {
 
   private final RoutingContext ctx;
-  private final RequestParameters params;
+  private final MultiMap params;
+  private final RequestBody body;
 
   private Request(RoutingContext ctx) {
     this.ctx = ctx;
-    this.params = ctx.get(ValidationHandler.REQUEST_CONTEXT_KEY);
+    this.params = ctx.queryParams();
+    this.body = ctx.body();
   }
 
   public static Request from(RoutingContext ctx) {
     return new Request(ctx);
   }
 
-  public RoutingContext getRoutingContext() {
-    return ctx;
-  }
-
-  public RequestParameters getRequestParameters() {
-    return params;
-  }
-
   public String getTestRequestParams() {
-    System.out.println(ctx);
-    System.out.println(params);
-    return params.queryParameter("test").getString();
+    return params.get("test");
   }
 
   public String getTestBody() {
-    System.out.println(params);
-    return params.body().getJsonObject().getString("test");
+    return body.asJsonObject().getString("test");
   }
 }

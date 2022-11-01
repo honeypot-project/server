@@ -17,9 +17,6 @@ public class ApiBridge {
   }
 
   public static void testPath(RoutingContext routingContext) {
-    System.out.println(routingContext);
-    System.out.println(routingContext.body().asJsonObject());
-
     Request request = Request.from(routingContext);
     String input = request.getTestRequestParams();
     Response.sendJsonResponse(routingContext, 200, new JsonObject().put("you said", input));
