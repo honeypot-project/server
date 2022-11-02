@@ -20,36 +20,36 @@ public class HoneypotService {
     }
 
     pool.preparedQuery("SELECT * FROM users WHERE id = ?")
-      .execute(Tuple.of(id))
-        .onSuccess(result -> {
-          if (result.size() == 0) {
-            Response.sendFailure(routingContext, 404, "Please login again");
-            return;
-          }
-          Boolean isAdmin = result.iterator().next().getBoolean("administrator");
+        .execute(Tuple.of(id))
+          .onSuccess(result -> {
+            if (result.size() == 0) {
 
-          if (!isAdmin) {
-            System.out.println("user not admin");
-            Response.sendFailure(routingContext, 403, "You are not an administrator");
-            return;
-          } else {
-            pool.query("SELECT * FROM users")
-              .execute()
-              .onSuccess(rows -> {{
-                for (Row row : rows) {
-                  response.put(row.getInteger("id").toString(), new JsonObject()
-                    .put("username", row.getString("username"))
-                    .put("disabled", row.getBoolean("disabled"))
-                    .put("admin", row.getBoolean("administrator")));
+              Response.sendFailure(routingContext, 404, "Please login again");
+
+            } else if (result.iterator().next().getBoolean("disabled")) {
+
+              Response.sendFailure(routingContext, 403, "User is disabled");
+
+            } else if (result.iterator().next().getBoolean("administrator")) {
+
+              Response.sendFailure(routingContext, 403, "You are not an administrator");
+
+            } else {
+                pool.query("SELECT * FROM users")
+                  .execute()
+                  .onSuccess(rows -> {
+                    for (Row row : rows) {
+                      response.put(row.getInteger("id").toString(), new JsonObject()
+                        .put("username", row.getString("username"))
+                        .put("disabled", row.getBoolean("disabled"))
+                        .put("admin", row.getBoolean("administrator")));
+                    }
+                    Response.sendJsonResponse(routingContext, 200, response);
+                  });
                 }
-
-                Response.sendJsonResponse(routingContext, 200, response);
-              }
-              });
-          }
-        }).onFailure(err -> {
-          Response.sendFailure(routingContext, 500, err.getMessage());
-        });
+              }).onFailure(err -> {
+                Response.sendFailure(routingContext, 500, err.getMessage());
+      });
   }
 
   public void addUser(RoutingContext routingContext, MySQLPool pool, String username, String password) {
