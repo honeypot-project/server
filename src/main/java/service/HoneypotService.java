@@ -6,7 +6,6 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.Session;
 import io.vertx.mysqlclient.MySQLPool;
 import io.vertx.sqlclient.Row;
-import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
 
 public class HoneypotService {
@@ -142,7 +141,7 @@ public class HoneypotService {
             .execute(Tuple.of(challengeId, flag))
             .onSuccess(rows -> {
               if (rows.size() == 0) {
-                Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", "Wrong flag"));
+                Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", "wrong flag"));
                 return;
               }
 

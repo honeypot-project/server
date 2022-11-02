@@ -58,7 +58,7 @@ public class Request {
   }
 
   public String getChallengeId() {
-    return body.asJsonObject().getString("challengeId");
+    return body.asJsonObject().getString("id");
   }
 
   public String getFlag() {
