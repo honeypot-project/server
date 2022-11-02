@@ -30,7 +30,7 @@ public class HoneypotService {
 
               Response.sendFailure(routingContext, 403, "User is disabled");
 
-            } else if (result.iterator().next().getBoolean("administrator")) {
+            } else if (!result.iterator().next().getBoolean("administrator")) {
 
               Response.sendFailure(routingContext, 403, "You are not an administrator");
 
