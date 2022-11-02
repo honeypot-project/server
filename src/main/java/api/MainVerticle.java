@@ -1,12 +1,13 @@
 package api;
 
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.MultiMap;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpMethod;
+import io.vertx.core.http.HttpServerOptions;
 import io.vertx.ext.web.Router;
-import io.vertx.ext.web.handler.BodyHandler;
-import io.vertx.ext.web.handler.CorsHandler;
-import io.vertx.ext.web.handler.StaticHandler;
+import io.vertx.ext.web.handler.*;
+import io.vertx.ext.web.sstore.SessionStore;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -20,17 +21,24 @@ public class MainVerticle extends AbstractVerticle {
   public void start(Promise<Void> startPromise) throws Exception {
     this.startPromise = startPromise;
     Router router = Router.router(vertx);
+
     router.route().handler(createCorsHandler());
     router.route().handler(BodyHandler.create()
       .setUploadsDirectory("image-uploads")
       .setBodyLimit(500 * KB));
 
     router.get("/").handler(ApiBridge::hello);
+    router.get("/api/test").handler(ApiBridge::hello);
 
     router.post("/test").handler(ApiBridge::testBody);
     router.get("/test").handler(ApiBridge::testPath);
 
-    router.post("/addimage").handler(ApiBridge::addImage);
+    // Register, option verb might not be needed, CSRF is confusing
+    router.options("/register").handler(createCorsHandler()).handler(ApiBridge::hello);
+    router.post("/register").handler(createCorsHandler()).handler(ApiBridge::register);
+
+    // Image upload function
+    router.post("/upload").handler(ApiBridge::uploadImg);
     router.route("/uploads/imgs/*").handler(
       StaticHandler.create("image-uploads").setCachingEnabled(false)
     );
@@ -53,8 +61,10 @@ public class MainVerticle extends AbstractVerticle {
   }
 
   private CorsHandler createCorsHandler() {
-    return CorsHandler.create(".*.")
+    return CorsHandler.create()
       .allowedHeader("x-requested-with")
+      .allowedHeader("Access-Control-Allow-Headers")
+      .allowedHeader("Access-Control-Allow-Method")
       .allowedHeader("Access-Control-Allow-Origin")
       .allowedHeader("Access-Control-Allow-Credentials")
       .allowCredentials(true)

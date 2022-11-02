@@ -48,4 +48,9 @@ public class Request {
   public String getTestBody() {
     return body.asJsonObject().getString("test");
   }
+
+  public String getUsername() {
+    System.out.println(body.asString());
+    return null;
+  }
 }
