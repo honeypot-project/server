@@ -3,8 +3,10 @@ package service;
 import api.Response;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.Session;
 import io.vertx.mysqlclient.MySQLPool;
 import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
 
 public class HoneypotService {
@@ -28,7 +30,8 @@ public class HoneypotService {
   }
 
   public void addUser(RoutingContext routingContext, MySQLPool pool, String username, String password) {
-    pool.preparedQuery("SELECT * FROM users WHERE username = ?").execute(Tuple.of(username))
+    pool.preparedQuery("SELECT * FROM users WHERE username = ?")
+      .execute(Tuple.of(username))
       .onSuccess(rows -> {
         if (rows.size() != 0) {
           System.out.println("User already exists");
@@ -43,6 +46,25 @@ public class HoneypotService {
         }
       }).onFailure(err -> {
           Response.sendFailure(routingContext, 500, err.getMessage());
+      });
+  }
+
+  public void login(RoutingContext routingContext, MySQLPool pool, String username, String password) {
+    pool.preparedQuery("SELECT * FROM users WHERE username = ? AND password = ?")
+      .execute(Tuple.of(username, password))
+      .onSuccess(rows -> {
+        if (rows.size() == 0) {
+          Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", "User not found"));
+          return;
+        } else {
+          System.out.println("login successful");
+          Session session = routingContext.session();
+          session.put("id", rows.iterator().next().getInteger("id").toString());
+          System.out.println((String) session.get("id"));
+          Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "Login successful"));
+        }
+      }).onFailure(err -> {
+        Response.sendFailure(routingContext, 500, err.getMessage());
       });
   }
 }
