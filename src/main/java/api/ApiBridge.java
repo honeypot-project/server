@@ -1,13 +1,15 @@
 package api;
 
-import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.RoutingContext;
+import io.vertx.mysqlclient.MySQLPool;
+import service.HoneypotService;
 
 import java.util.List;
 
 public class ApiBridge {
+  private static final HoneypotService service = new HoneypotService();
 
 
   public static void hello(RoutingContext routingContext) {
@@ -29,15 +31,11 @@ public class ApiBridge {
   public static void register(RoutingContext routingContext) {
     System.out.println("Registering");
     Request request = Request.from(routingContext);
-    request.getUsername();
+    String username = request.getUsername();
+    String password = request.getPassword();
 
-    // Check if picture was submitted
-    List<FileUpload> files = routingContext.fileUploads();
-
-    System.out.println(files.size());
-    for (FileUpload file : files) {
-      System.out.println(file.fileName());
-    }
+    System.out.println("Username: " + username);
+    System.out.println("Password: " + password);
 
     Response.sendOkResponse(routingContext);
   }
@@ -50,5 +48,11 @@ public class ApiBridge {
     for (FileUpload file : files) {
       System.out.println(file.fileName());
     }
+  }
+
+  public static void getUsers(RoutingContext routingContext) {
+    MySQLPool pool = MainVerticle.pool;
+
+    service.getUsers(routingContext, pool);
   }
 }

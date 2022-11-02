@@ -1,25 +1,39 @@
 package api;
 
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.MultiMap;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.HttpServerOptions;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.*;
-import io.vertx.ext.web.sstore.SessionStore;
+import io.vertx.mysqlclient.MySQLConnectOptions;
+import io.vertx.mysqlclient.MySQLPool;
+import io.vertx.sqlclient.PoolOptions;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 
 public class MainVerticle extends AbstractVerticle {
   private static final Logger LOGGER = Logger.getLogger(MainVerticle.class.getName());
   private Promise<Void> startPromise;
   private static final int KB = 1000;
 
+  public static MySQLPool pool;
+
   @Override
   public void start(Promise<Void> startPromise) throws Exception {
     this.startPromise = startPromise;
+
+    // Create a mysql client
+    pool = MySQLPool.pool(vertx, new MySQLConnectOptions()
+        .setPort(3306)
+        .setHost("localhost")
+        .setDatabase("honeypot")
+        .setUser("root")
+        .setPassword("123"),
+      new PoolOptions().setMaxSize(5));
+
+    // Create a router object.
     Router router = Router.router(vertx);
 
     router.route().handler(createCorsHandler());
@@ -36,6 +50,8 @@ public class MainVerticle extends AbstractVerticle {
     // Register, option verb might not be needed, CSRF is confusing
     router.options("/register").handler(createCorsHandler()).handler(ApiBridge::hello);
     router.post("/register").handler(createCorsHandler()).handler(ApiBridge::register);
+
+    router.get("/users").handler(ApiBridge::getUsers);
 
     // Image upload function
     router.post("/upload").handler(ApiBridge::uploadImg);

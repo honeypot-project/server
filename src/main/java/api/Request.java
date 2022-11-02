@@ -50,7 +50,10 @@ public class Request {
   }
 
   public String getUsername() {
-    System.out.println(body.asString());
-    return null;
+    return body.asJsonObject().getString("username");
+  }
+
+  public String getPassword() {
+    return body.asJsonObject().getString("password");
   }
 }
