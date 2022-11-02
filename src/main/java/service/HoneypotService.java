@@ -10,23 +10,41 @@ import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
 
 public class HoneypotService {
-  public void getUsers(RoutingContext ctx, MySQLPool pool) {
+  public void getUsers(RoutingContext routingContext, MySQLPool pool) {
     JsonObject response = new JsonObject();
-    pool.query("SELECT * FROM users")
-      .execute()
-      .onSuccess(rows -> {{
-        System.out.println("Got " + rows.size() + " rows ");
+    String id = routingContext.session().get("id");
 
-          for (Row row : rows) {
-            response.put(row.getInteger("id").toString(), row.getString("username"));
-          }
+    pool.preparedQuery("SELECT * FROM users WHERE id = ?")
+      .execute(Tuple.of(id))
+        .onSuccess(result -> {
 
-          Response.sendJsonResponse(ctx, 200, response);
-        }
-      }).onFailure(err -> {
-        System.out.println("Failure: " + err.getMessage());
-        Response.sendFailure(ctx, 500, err.getMessage());
-      });
+          Boolean isAdmin = result.iterator().next().getBoolean("administrator");
+
+          if (!isAdmin) {
+            System.out.println("user not admin");
+            Response.sendFailure(routingContext, 403, "You are not an administrator");
+            return;
+          } else {
+            pool.query("SELECT * FROM users")
+              .execute()
+              .onSuccess(rows -> {{
+                for (Row row : rows) {
+                  response.put(row.getInteger("id").toString(), new JsonObject()
+                    .put("username", row.getString("username"))
+                    .put("disabled", row.getBoolean("disabled"))
+                    .put("admin", row.getBoolean("administrator")));
+                }
+
+                Response.sendJsonResponse(routingContext, 200, response);
+              }
+              }).onFailure(err -> {
+                System.out.println("Failure: " + err.getMessage());
+                Response.sendFailure(routingContext, 500, err.getMessage());
+              });
+            }
+        }).onFailure(err -> {
+          Response.sendFailure(routingContext, 500, err.getMessage());
+        });
   }
 
   public void addUser(RoutingContext routingContext, MySQLPool pool, String username, String password) {
