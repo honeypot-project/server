@@ -64,6 +64,7 @@ public class MainVerticle extends AbstractVerticle {
     router.post("/login").handler(ApiBridge::login);
 
     router.get("/users").handler(ApiBridge::getUsers);
+    router.get("/disable").handler(ApiBridge::disableUser);
 
     // Image upload function
     router.post("/upload").handler(ApiBridge::uploadImg);

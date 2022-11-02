@@ -124,23 +124,71 @@ public class HoneypotService {
     String id = routingContext.session().get("id");
     if (id == null) {
       Response.sendJsonResponse(routingContext, 401, new JsonObject().put("error", "Not logged in"));
+    } else {
+    pool.preparedQuery("SELECT * FROM users WHERE id = ?")
+      .execute(Tuple.of(id))
+      .onSuccess(result -> {
+        result.iterator().next().getBoolean("disabled");
+        if (result.size() == 0) {
+
+          Response.sendFailure(routingContext, 404, "Please login again");
+
+        } else if (result.iterator().next().getBoolean("disabled")) {
+
+          Response.sendFailure(routingContext, 403, "User is disabled");
+
+        } else {
+          pool.preparedQuery("SELECT * FROM challenges WHERE challenge_id = ? AND flag = ?")
+            .execute(Tuple.of(challengeId, flag))
+            .onSuccess(rows -> {
+              if (rows.size() == 0) {
+                Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", "Wrong flag"));
+                return;
+              }
+
+              pool.preparedQuery("INSERT INTO solved_challenges (user_id, solved_challenge_id) VALUES (?, ?)")
+                .execute(Tuple.of(id, challengeId))
+                .onSuccess(res -> {
+                  Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "Challenge solved"));
+                });
+
+            });
+        }
+      }).onFailure(err -> {
+        Response.sendFailure(routingContext, 500, err.getMessage());
+      });
+    }
+  }
+
+  public void disableUser(RoutingContext routingContext, MySQLPool pool, String userId) {
+    String id = routingContext.session().get("id");
+    if (id == null) {
+      Response.sendJsonResponse(routingContext, 401, new JsonObject().put("error", "Not logged in"));
       return;
     }
 
-    pool.preparedQuery("SELECT * FROM challenges WHERE challenge_id = ? AND flag = ?")
-      .execute(Tuple.of(challengeId, flag))
-      .onSuccess(rows -> {
-        if (rows.size() == 0) {
-          Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", "Wrong flag"));
-          return;
+    pool.preparedQuery("SELECT * FROM users WHERE id = ?")
+      .execute(Tuple.of(id))
+      .onSuccess(result -> {
+        if (result.size() == 0) {
+
+          Response.sendFailure(routingContext, 404, "Please login again");
+
+        } else if (result.iterator().next().getBoolean("disabled")) {
+
+          Response.sendFailure(routingContext, 403, "User is disabled");
+
+        } else if (!result.iterator().next().getBoolean("administrator")) {
+
+          Response.sendFailure(routingContext, 403, "You are not an administrator");
+
+        } else {
+          pool.preparedQuery("UPDATE users SET disabled = true WHERE id = ?")
+            .execute(Tuple.of(userId))
+            .onSuccess(res -> {
+              Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "User disabled"));
+            });
         }
-
-        pool.preparedQuery("INSERT INTO solved_challenges (user_id, solved_challenge_id) VALUES (?, ?)")
-          .execute(Tuple.of(id, challengeId))
-          .onSuccess(res -> {
-            Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "Challenge solved"));
-          });
-
       }).onFailure(err -> {
         Response.sendFailure(routingContext, 500, err.getMessage());
       });
