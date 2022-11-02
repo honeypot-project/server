@@ -87,10 +87,7 @@ public class HoneypotService {
             System.out.println(response);
 
             for (Row solvedChallenge : solvedChallenges) {
-              System.out.println(solvedChallenge.toJson());
-              System.out.println(solvedChallenge.getInteger("solved_challenge_id").toString());
               response.put(solvedChallenge.getInteger("solved_challenge_id").toString(), "solved");
-              System.out.println(response);
             }
 
             Response.sendJsonResponse(routingContext, 200, response);
@@ -113,13 +110,14 @@ public class HoneypotService {
         if (rows.size() == 0) {
           Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", "Wrong flag"));
           return;
-        } else {
-          pool.preparedQuery("INSERT INTO solved_challenges (user_id, solved_challenge_id) VALUES (?, ?)")
-            .execute(Tuple.of(id, challengeId))
-            .onSuccess(res -> {
-              Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "Challenge solved"));
-            });
         }
+
+        pool.preparedQuery("INSERT INTO solved_challenges (user_id, solved_challenge_id) VALUES (?, ?)")
+          .execute(Tuple.of(id, challengeId))
+          .onSuccess(res -> {
+            Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "Challenge solved"));
+          });
+
       }).onFailure(err -> {
         Response.sendFailure(routingContext, 500, err.getMessage());
       });
