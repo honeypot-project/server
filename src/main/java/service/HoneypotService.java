@@ -14,10 +14,18 @@ public class HoneypotService {
     JsonObject response = new JsonObject();
     String id = routingContext.session().get("id");
 
+    if (id == null) {
+      Response.sendFailure(routingContext, 401, "You are not logged in");
+      return;
+    }
+
     pool.preparedQuery("SELECT * FROM users WHERE id = ?")
       .execute(Tuple.of(id))
         .onSuccess(result -> {
-
+          if (result.size() == 0) {
+            Response.sendFailure(routingContext, 404, "Please login again");
+            return;
+          }
           Boolean isAdmin = result.iterator().next().getBoolean("administrator");
 
           if (!isAdmin) {
@@ -37,11 +45,8 @@ public class HoneypotService {
 
                 Response.sendJsonResponse(routingContext, 200, response);
               }
-              }).onFailure(err -> {
-                System.out.println("Failure: " + err.getMessage());
-                Response.sendFailure(routingContext, 500, err.getMessage());
               });
-            }
+          }
         }).onFailure(err -> {
           Response.sendFailure(routingContext, 500, err.getMessage());
         });
