@@ -10,6 +10,7 @@ import java.util.List;
 
 public class ApiBridge {
   private static final HoneypotService service = new HoneypotService();
+  private static final MySQLPool pool = MainVerticle.pool;
 
 
   public static void hello(RoutingContext routingContext) {
@@ -34,10 +35,7 @@ public class ApiBridge {
     String username = request.getUsername();
     String password = request.getPassword();
 
-    System.out.println("Username: " + username);
-    System.out.println("Password: " + password);
-
-    Response.sendOkResponse(routingContext);
+    service.addUser(routingContext, pool, username, password);
   }
 
   public static void uploadImg(RoutingContext routingContext) {
@@ -51,8 +49,6 @@ public class ApiBridge {
   }
 
   public static void getUsers(RoutingContext routingContext) {
-    MySQLPool pool = MainVerticle.pool;
-
     service.getUsers(routingContext, pool);
   }
 }
