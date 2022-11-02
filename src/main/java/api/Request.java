@@ -1,4 +1,4 @@
-package challenges;
+package api;
 
 import io.vertx.core.MultiMap;
 import io.vertx.ext.web.RequestBody;

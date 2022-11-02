@@ -7,7 +7,7 @@ plugins {
   id("com.github.johnrengelman.shadow") version "7.0.0"
 }
 
-group = "com.challenges"
+group = "com.api"
 version = "1.0.0-SNAPSHOT"
 
 repositories {
@@ -17,7 +17,7 @@ repositories {
 val vertxVersion = "4.3.4"
 val junitJupiterVersion = "5.7.0"
 
-val mainVerticleName = "challenges.MainVerticle"
+val mainVerticleName = "api.MainVerticle"
 val launcherClassName = "io.vertx.core.Launcher"
 
 val watchForChange = "src/**/*"
