@@ -3,6 +3,7 @@ package api;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.Session;
 import io.vertx.mysqlclient.MySQLPool;
 import service.HoneypotService;
 
@@ -34,6 +35,8 @@ public class ApiBridge {
     Request request = Request.from(routingContext);
     String username = request.getUsername();
     String password = request.getPassword();
+    // Hash password
+
 
     service.addUser(routingContext, pool, username, password);
   }
@@ -50,5 +53,15 @@ public class ApiBridge {
 
   public static void getUsers(RoutingContext routingContext) {
     service.getUsers(routingContext, pool);
+  }
+
+  public static void login(RoutingContext routingContext) {
+    Session session = routingContext.session();
+
+    Request request = Request.from(routingContext);
+    String username = request.getUsername();
+    String password = request.getPassword();
+
+    service.login(routingContext, pool, username, password);
   }
 }
