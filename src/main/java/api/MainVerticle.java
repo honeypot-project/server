@@ -5,7 +5,6 @@ import io.vertx.core.Promise;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.*;
-import io.vertx.ext.web.sstore.ClusteredSessionStore;
 import io.vertx.ext.web.sstore.SessionStore;
 import io.vertx.mysqlclient.MySQLConnectOptions;
 import io.vertx.mysqlclient.MySQLPool;
@@ -39,7 +38,7 @@ public class MainVerticle extends AbstractVerticle {
     Router router = Router.router(vertx);
 
     // Create session handler
-    SessionStore store = ClusteredSessionStore.create(vertx);
+    SessionStore store = SessionStore.create(vertx);
     SessionHandler sessionHandler = SessionHandler.create(store);
     router.route().handler(sessionHandler);
 
@@ -53,6 +52,10 @@ public class MainVerticle extends AbstractVerticle {
 
     router.post("/test").handler(ApiBridge::testBody);
     router.get("/test").handler(ApiBridge::testPath);
+
+
+    router.get("/challenges").handler(ApiBridge::getChallenges);
+    router.post("/challenges").handler(ApiBridge::submitChallenge);
 
     // Register, option verb might not be needed, CSRF is confusing
     router.options("/register").handler(createCorsHandler()).handler(ApiBridge::hello);

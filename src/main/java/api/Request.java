@@ -56,4 +56,12 @@ public class Request {
   public String getPassword() {
     return body.asJsonObject().getString("password");
   }
+
+  public String getChallengeId() {
+    return body.asJsonObject().getString("challengeId");
+  }
+
+  public String getFlag() {
+    return body.asJsonObject().getString("flag");
+  }
 }

@@ -64,4 +64,16 @@ public class ApiBridge {
 
     service.login(routingContext, pool, username, password);
   }
+
+  public static void getChallenges(RoutingContext routingContext) {
+    service.getChallenges(routingContext, pool);
+  }
+
+  public static void submitChallenge(RoutingContext routingContext) {
+    Request request = Request.from(routingContext);
+    String challengeId = request.getChallengeId();
+    String flag = request.getFlag();
+
+    service.submitChallenge(routingContext, pool, challengeId, flag);
+  }
 }

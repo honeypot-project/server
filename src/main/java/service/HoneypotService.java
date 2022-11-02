@@ -57,11 +57,68 @@ public class HoneypotService {
           Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", "User not found"));
           return;
         } else {
-          System.out.println("login successful");
           Session session = routingContext.session();
           session.put("id", rows.iterator().next().getInteger("id").toString());
-          System.out.println((String) session.get("id"));
           Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "Login successful"));
+        }
+      }).onFailure(err -> {
+        Response.sendFailure(routingContext, 500, err.getMessage());
+      });
+  }
+
+  public void getChallenges(RoutingContext routingContext, MySQLPool pool) {
+    String id = routingContext.session().get("id");
+    if (id == null) {
+      Response.sendJsonResponse(routingContext, 401, new JsonObject().put("error", "Not logged in"));
+      return;
+    }
+
+    pool.preparedQuery("SELECT * FROM solved_challenges WHERE user_id = ?")
+      .execute(Tuple.of(id))
+      .onSuccess(solvedChallenges -> {
+        JsonObject response = new JsonObject();
+        pool.preparedQuery("SELECT * FROM challenges")
+          .execute()
+          .onSuccess(challenges -> {
+            for (Row challenge : challenges) {
+              response.put(challenge.getInteger("challenge_id").toString(), "unsolved");
+            }
+
+            System.out.println(response);
+
+            for (Row solvedChallenge : solvedChallenges) {
+              System.out.println(solvedChallenge.toJson());
+              System.out.println(solvedChallenge.getInteger("solved_challenge_id").toString());
+              response.put(solvedChallenge.getInteger("solved_challenge_id").toString(), "solved");
+              System.out.println(response);
+            }
+
+            Response.sendJsonResponse(routingContext, 200, response);
+          });
+      }).onFailure(err -> {
+        Response.sendFailure(routingContext, 500, err.getMessage());
+      });
+  }
+
+  public void submitChallenge(RoutingContext routingContext, MySQLPool pool, String challengeId, String flag) {
+    String id = routingContext.session().get("id");
+    if (id == null) {
+      Response.sendJsonResponse(routingContext, 401, new JsonObject().put("error", "Not logged in"));
+      return;
+    }
+
+    pool.preparedQuery("SELECT * FROM challenges WHERE challenge_id = ? AND flag = ?")
+      .execute(Tuple.of(challengeId, flag))
+      .onSuccess(rows -> {
+        if (rows.size() == 0) {
+          Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", "Wrong flag"));
+          return;
+        } else {
+          pool.preparedQuery("INSERT INTO solved_challenges (user_id, solved_challenge_id) VALUES (?, ?)")
+            .execute(Tuple.of(id, challengeId))
+            .onSuccess(res -> {
+              Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "Challenge solved"));
+            });
         }
       }).onFailure(err -> {
         Response.sendFailure(routingContext, 500, err.getMessage());
