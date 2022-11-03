@@ -47,10 +47,6 @@ public class MainVerticle extends AbstractVerticle {
     router.get("/test").handler(ApiBridge::testPath);
     router.post("/test").handler(BodyHandler.create()).handler(ApiBridge::testBody);
 
-
-    router.get("/challenges").handler(ApiBridge::getChallenges);
-    router.post("/challenges").handler(ApiBridge::submitChallenge);
-
     // Login
     router.post("/login").handler(BodyHandler.create()).handler(ApiBridge::login);
 
@@ -76,6 +72,10 @@ public class MainVerticle extends AbstractVerticle {
     router.route("/uploads/images/*").handler(
       StaticHandler.create("uploads/images/").setCachingEnabled(true)
     );
+
+    // Challenges
+    router.get("/challenges").handler(ApiBridge::getChallenges);
+    router.post("/challenges").handler(ApiBridge::submitChallenge);
 
 
     vertx.createHttpServer()

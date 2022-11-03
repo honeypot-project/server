@@ -50,6 +50,11 @@ public class HoneypotService {
           Response.sendFailure(routingContext, 403, USER_NOT_ADMIN_ERROR);
 
         } else {
+          // Update last action on database
+          pool.preparedQuery("UPDATE users SET last_action = NOW() WHERE id = ?")
+            .execute(Tuple.of(id));
+
+          // Get all users from DB
           pool.query("SELECT * FROM users")
             .execute()
             .onSuccess(users -> {
@@ -74,8 +79,10 @@ public class HoneypotService {
       .onSuccess(rows -> {
         if (rows.size() != 0) {
           Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", USERNAME_TAKEN_ERROR));
-          return;
         } else {
+
+          // TODO: Maybe add password hashing / salt+pepper here
+
           pool.preparedQuery("INSERT INTO users (username, password) VALUES (?, ?)")
             .execute(Tuple.of(username, password))
             .onSuccess(res -> {
@@ -147,56 +154,58 @@ public class HoneypotService {
   }
 
   public void submitChallenge(RoutingContext routingContext, MySQLPool pool, String challengeId, String flag) {
+
     String id = routingContext.session().get("id");
     if (id == null) {
       Response.sendJsonResponse(routingContext, 401, new JsonObject().put("error", NOT_LOGGED_IN_ERROR));
-    } else {
-      pool.preparedQuery("SELECT * FROM users WHERE id = ?")
-        .execute(Tuple.of(id))
-        .onSuccess(result -> {
-          if (result.size() == 0) {
+      return;
+    }
 
-            Response.sendFailure(routingContext, 404, USER_SESSION_NOT_FOUND_ERROR);
+    pool.preparedQuery("SELECT * FROM users WHERE id = ?")
+      .execute(Tuple.of(id))
+      .onSuccess(result -> {
+        if (result.size() == 0) {
 
-          } else if (result.iterator().next().getBoolean("disabled")) {
+          Response.sendFailure(routingContext, 404, USER_SESSION_NOT_FOUND_ERROR);
 
-            Response.sendFailure(routingContext, 403, USER_DISABLED_ERROR);
+        } else if (result.iterator().next().getBoolean("disabled")) {
 
-          } else {
-            // Update last action on database
-            pool.preparedQuery("UPDATE users SET last_action = NOW() WHERE id = ?")
-              .execute(Tuple.of(id));
+          Response.sendFailure(routingContext, 403, USER_DISABLED_ERROR);
 
-            pool.preparedQuery("SELECT * FROM challenges WHERE challenge_id = ? AND flag = ?")
-              .execute(Tuple.of(challengeId, flag))
-              .onSuccess(rows -> {
-                if (rows.size() == 0) {
+        } else {
+          // Update last action on database
+          pool.preparedQuery("UPDATE users SET last_action = NOW() WHERE id = ?")
+            .execute(Tuple.of(id));
 
-                  Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", "wrong flag"));
+          pool.preparedQuery("SELECT * FROM challenges WHERE challenge_id = ? AND flag = ?")
+            .execute(Tuple.of(challengeId, flag))
+            .onSuccess(rows -> {
+              if (rows.size() == 0) {
 
-                } else {
+                Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", "wrong flag"));
 
-                  // check if challenge already solved
-                  pool.preparedQuery("SELECT * FROM solved_challenges WHERE user_id = ? AND solved_challenge_id = ?")
-                    .execute(Tuple.of(id, challengeId))
-                    .onSuccess(solvedChallenges -> {
-                      if (solvedChallenges.size() != 0) {
-                        Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", "challenge already solved"));
-                      } else {
-                        pool.preparedQuery("INSERT INTO solved_challenges (user_id, solved_challenge_id) VALUES (?, ?)")
-                          .execute(Tuple.of(id, challengeId))
-                          .onSuccess(res -> {
-                            Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "challenge solved"));
-                          });
-                      }
-                    });
-                }
-              });
-          }
-        }).onFailure(err -> {
+              } else {
+
+                // check if challenge already solved
+                pool.preparedQuery("SELECT * FROM solved_challenges WHERE user_id = ? AND solved_challenge_id = ?")
+                  .execute(Tuple.of(id, challengeId))
+                  .onSuccess(solvedChallenges -> {
+                    if (solvedChallenges.size() != 0) {
+                      Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", "challenge already solved"));
+                    } else {
+                      pool.preparedQuery("INSERT INTO solved_challenges (user_id, solved_challenge_id) VALUES (?, ?)")
+                        .execute(Tuple.of(id, challengeId))
+                        .onSuccess(res -> {
+                          Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "challenge solved"));
+                        });
+                    }
+                  });
+              }
+            });
+
+        }}).onFailure(err -> {
           Response.sendFailure(routingContext, 500, err.getMessage());
         });
-    }
   }
 
   public void toggleUser(RoutingContext routingContext, MySQLPool pool, String userIdToBeToggled) {
@@ -296,7 +305,6 @@ public class HoneypotService {
 
   public void getUser(RoutingContext routingContext, MySQLPool pool) {
     String userId = routingContext.session().get("id");
-    System.out.println(userId);
 
     if (userId == null) {
       Response.sendJsonResponse(routingContext, 401, new JsonObject().put("error", NOT_LOGGED_IN_ERROR));
@@ -362,7 +370,6 @@ public class HoneypotService {
           FileUpload file = files.get(0);
 
           // Check if file is an image
-          System.out.println(file.contentType());
           if (!file.contentType().startsWith("image/")) {
             Response.sendFailure(routingContext, 400, "File is not an image");
             deleteFiles(files);
