@@ -9,9 +9,14 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.Tuple;
 
 public class HoneypotService {
+  private static final String USERNAME_TAKEN_ERROR = "user already exists";
+  private static final String LOGIN_FAIL_ERROR = "user does not exist or wrong password";
   private static final String NOT_LOGGED_IN_ERROR = "not logged in";
   private static final String USER_DISABLED_ERROR = "user disabled";
   private static final String USER_NOT_ADMIN_ERROR = "user not admin";
+  private static final String USER_SESSION_NOT_FOUND_ERROR = "please login again";
+
+
 
   public void getUsers(RoutingContext routingContext, MySQLPool pool) {
     JsonObject response = new JsonObject();
@@ -27,7 +32,7 @@ public class HoneypotService {
           .onSuccess(result -> {
             if (result.size() == 0) {
 
-              Response.sendFailure(routingContext, 404, "Please login again");
+              Response.sendFailure(routingContext, 404, USER_SESSION_NOT_FOUND_ERROR);
 
             } else if (result.iterator().next().getBoolean("disabled")) {
 
@@ -60,8 +65,7 @@ public class HoneypotService {
       .execute(Tuple.of(username))
       .onSuccess(rows -> {
         if (rows.size() != 0) {
-          System.out.println("User already exists");
-          Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", "user already exists"));
+          Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", USERNAME_TAKEN_ERROR));
           return;
         } else {
           pool.preparedQuery("INSERT INTO users (username, password) VALUES (?, ?)")
@@ -80,7 +84,7 @@ public class HoneypotService {
       .execute(Tuple.of(username, password))
       .onSuccess(rows -> {
         if (rows.size() == 0) {
-          Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", "user not found"));
+          Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", LOGIN_FAIL_ERROR));
           return;
         } else {
           Session session = routingContext.session();
@@ -110,8 +114,6 @@ public class HoneypotService {
               response.put(challenge.getInteger("challenge_id").toString(), "unsolved");
             }
 
-            System.out.println(response);
-
             for (Row solvedChallenge : solvedChallenges) {
               response.put(solvedChallenge.getInteger("solved_challenge_id").toString(), "solved");
             }
@@ -133,7 +135,7 @@ public class HoneypotService {
       .onSuccess(result -> {
         if (result.size() == 0) {
 
-          Response.sendFailure(routingContext, 404, "Please login again");
+          Response.sendFailure(routingContext, 404, USER_SESSION_NOT_FOUND_ERROR);
 
         } else if (result.iterator().next().getBoolean("disabled")) {
 
@@ -174,7 +176,7 @@ public class HoneypotService {
       .onSuccess(result -> {
         if (result.size() == 0) {
 
-          Response.sendFailure(routingContext, 404, "Please login again");
+          Response.sendFailure(routingContext, 404, USER_SESSION_NOT_FOUND_ERROR);
 
         } else if (result.iterator().next().getBoolean("disabled")) {
 
