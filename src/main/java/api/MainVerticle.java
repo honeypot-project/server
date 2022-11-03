@@ -48,8 +48,6 @@ public class MainVerticle extends AbstractVerticle {
       .setBodyLimit(500 * KB));
 
     router.get("/").handler(ApiBridge::hello);
-    router.get("/api/test").handler(ApiBridge::hello);
-
     router.post("/test").handler(ApiBridge::testBody);
     router.get("/test").handler(ApiBridge::testPath);
 
