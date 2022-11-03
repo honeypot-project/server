@@ -9,12 +9,16 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.Tuple;
 
 public class HoneypotService {
+  private static final String NOT_LOGGED_IN_ERROR = "not logged in";
+  private static final String USER_DISABLED_ERROR = "user disabled";
+  private static final String USER_NOT_ADMIN_ERROR = "user not admin";
+
   public void getUsers(RoutingContext routingContext, MySQLPool pool) {
     JsonObject response = new JsonObject();
     String id = routingContext.session().get("id");
 
     if (id == null) {
-      Response.sendFailure(routingContext, 401, "You are not logged in");
+      Response.sendFailure(routingContext, 401, NOT_LOGGED_IN_ERROR);
       return;
     }
 
@@ -27,11 +31,11 @@ public class HoneypotService {
 
             } else if (result.iterator().next().getBoolean("disabled")) {
 
-              Response.sendFailure(routingContext, 403, "User is disabled");
+              Response.sendFailure(routingContext, 403, USER_DISABLED_ERROR);
 
             } else if (!result.iterator().next().getBoolean("administrator")) {
 
-              Response.sendFailure(routingContext, 403, "You are not an administrator");
+              Response.sendFailure(routingContext, 403, USER_NOT_ADMIN_ERROR);
 
             } else {
                 pool.query("SELECT * FROM users")
@@ -57,13 +61,13 @@ public class HoneypotService {
       .onSuccess(rows -> {
         if (rows.size() != 0) {
           System.out.println("User already exists");
-          Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", "User already exists"));
+          Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", "user already exists"));
           return;
         } else {
           pool.preparedQuery("INSERT INTO users (username, password) VALUES (?, ?)")
             .execute(Tuple.of(username, password))
             .onSuccess(res -> {
-              Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "User added"));
+              Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "user added"));
             });
         }
       }).onFailure(err -> {
@@ -76,12 +80,12 @@ public class HoneypotService {
       .execute(Tuple.of(username, password))
       .onSuccess(rows -> {
         if (rows.size() == 0) {
-          Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", "User not found"));
+          Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", "user not found"));
           return;
         } else {
           Session session = routingContext.session();
           session.put("id", rows.iterator().next().getInteger("id").toString());
-          Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "Login successful"));
+          Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "login successful"));
         }
       }).onFailure(err -> {
         Response.sendFailure(routingContext, 500, err.getMessage());
@@ -91,7 +95,7 @@ public class HoneypotService {
   public void getChallenges(RoutingContext routingContext, MySQLPool pool) {
     String id = routingContext.session().get("id");
     if (id == null) {
-      Response.sendJsonResponse(routingContext, 401, new JsonObject().put("error", "Not logged in"));
+      Response.sendJsonResponse(routingContext, 401, new JsonObject().put("error", NOT_LOGGED_IN_ERROR));
       return;
     }
 
@@ -122,19 +126,18 @@ public class HoneypotService {
   public void submitChallenge(RoutingContext routingContext, MySQLPool pool, String challengeId, String flag) {
     String id = routingContext.session().get("id");
     if (id == null) {
-      Response.sendJsonResponse(routingContext, 401, new JsonObject().put("error", "Not logged in"));
+      Response.sendJsonResponse(routingContext, 401, new JsonObject().put("error", NOT_LOGGED_IN_ERROR));
     } else {
     pool.preparedQuery("SELECT * FROM users WHERE id = ?")
       .execute(Tuple.of(id))
       .onSuccess(result -> {
-        result.iterator().next().getBoolean("disabled");
         if (result.size() == 0) {
 
           Response.sendFailure(routingContext, 404, "Please login again");
 
         } else if (result.iterator().next().getBoolean("disabled")) {
 
-          Response.sendFailure(routingContext, 403, "User is disabled");
+          Response.sendFailure(routingContext, 403, USER_DISABLED_ERROR);
 
         } else {
           pool.preparedQuery("SELECT * FROM challenges WHERE challenge_id = ? AND flag = ?")
@@ -148,7 +151,7 @@ public class HoneypotService {
               pool.preparedQuery("INSERT INTO solved_challenges (user_id, solved_challenge_id) VALUES (?, ?)")
                 .execute(Tuple.of(id, challengeId))
                 .onSuccess(res -> {
-                  Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "Challenge solved"));
+                  Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "challenge solved"));
                 });
 
             });
@@ -162,7 +165,7 @@ public class HoneypotService {
   public void disableUser(RoutingContext routingContext, MySQLPool pool, String userId) {
     String id = routingContext.session().get("id");
     if (id == null) {
-      Response.sendJsonResponse(routingContext, 401, new JsonObject().put("error", "Not logged in"));
+      Response.sendJsonResponse(routingContext, 401, new JsonObject().put("error", NOT_LOGGED_IN_ERROR));
       return;
     }
 
@@ -175,17 +178,17 @@ public class HoneypotService {
 
         } else if (result.iterator().next().getBoolean("disabled")) {
 
-          Response.sendFailure(routingContext, 403, "User is disabled");
+          Response.sendFailure(routingContext, 403, USER_DISABLED_ERROR);
 
         } else if (!result.iterator().next().getBoolean("administrator")) {
 
-          Response.sendFailure(routingContext, 403, "You are not an administrator");
+          Response.sendFailure(routingContext, 403, USER_NOT_ADMIN_ERROR);
 
         } else {
           pool.preparedQuery("UPDATE users SET disabled = true WHERE id = ?")
             .execute(Tuple.of(userId))
             .onSuccess(res -> {
-              Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "User disabled"));
+              Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "user disabled"));
             });
         }
       }).onFailure(err -> {
