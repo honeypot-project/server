@@ -7,6 +7,7 @@ import io.vertx.ext.web.Session;
 import io.vertx.mysqlclient.MySQLPool;
 import service.HoneypotService;
 
+import java.io.File;
 import java.util.List;
 
 public class ApiBridge {
@@ -44,11 +45,8 @@ public class ApiBridge {
     // Check if picture was submitted
     List<FileUpload> files = routingContext.fileUploads();
 
-    System.out.println(files.size());
-    for (FileUpload file : files) {
-      System.out.println(file.fileName());
-    }
-    Response.sendJsonResponse(routingContext, 200, new JsonObject().put("message", "ok"));
+    service.uploadImg(routingContext, pool, files);
+
   }
 
   public static void getUsers(RoutingContext routingContext) {

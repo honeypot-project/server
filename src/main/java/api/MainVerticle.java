@@ -40,43 +40,43 @@ public class MainVerticle extends AbstractVerticle {
     // Create session handler
     SessionStore store = SessionStore.create(vertx);
     SessionHandler sessionHandler = SessionHandler.create(store);
-    router.route().handler(sessionHandler)
-      .handler(BodyHandler.create().setBodyLimit(1000 * KB))
-      .handler(createCorsHandler());
+    router.route().handler(sessionHandler);
+    router.route().handler(createCorsHandler());
 
     router.get("/").handler(ApiBridge::hello);
-    router.post("/test").handler(ApiBridge::testBody);
     router.get("/test").handler(ApiBridge::testPath);
+    router.post("/test").handler(BodyHandler.create()).handler(ApiBridge::testBody);
 
 
     router.get("/challenges").handler(ApiBridge::getChallenges);
     router.post("/challenges").handler(ApiBridge::submitChallenge);
 
+    // Login
+    router.post("/login").handler(BodyHandler.create()).handler(ApiBridge::login);
+
     // Register, option verb might not be needed, CSRF is confusing
     router.options("/register").handler(createCorsHandler()).handler(ApiBridge::hello);
-    router.post("/register").handler(createCorsHandler()).handler(ApiBridge::register);
-
-    router.post("/login").handler(ApiBridge::login);
+    router.post("/register").handler(BodyHandler.create()).handler(ApiBridge::register);
 
     // Get user details
     router.get("/user").handler(ApiBridge::getUser);
-
     // Gets all users
     router.get("/users").handler(ApiBridge::getUsers);
     // Gets online users
     router.get("/online").handler(ApiBridge::getOnlineUsers);
-
-    // This toggles the users status (disabled/enabled)
+    // This toggles the users' status (disabled/enabled)
     router.get("/toggleUser").handler(ApiBridge::toggleUser);
 
     // Image upload function
     router.post("/upload").handler(BodyHandler.create()
-        .setUploadsDirectory("image-uploads")
+        .setUploadsDirectory("temp-uploads")
+        .setHandleFileUploads(true)
         .setBodyLimit(10000 * KB))
       .handler(ApiBridge::uploadImg);
-    router.route("/uploads/imgs/*").handler(
-      StaticHandler.create("image-uploads").setCachingEnabled(false)
+    router.route("/uploads/images/*").handler(
+      StaticHandler.create("uploads/images/").setCachingEnabled(true)
     );
+
 
     vertx.createHttpServer()
       .requestHandler(router)
