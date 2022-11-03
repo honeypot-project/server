@@ -63,6 +63,8 @@ public class MainVerticle extends AbstractVerticle {
 
     // Gets all users
     router.get("/users").handler(ApiBridge::getUsers);
+    // Gets online users
+    router.get("/online").handler(ApiBridge::getOnlineUsers);
 
     // This toggles the users status (disabled/enabled)
     router.get("/toggleUser").handler(ApiBridge::toggleUser);

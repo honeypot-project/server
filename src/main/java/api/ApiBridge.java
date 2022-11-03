@@ -83,4 +83,8 @@ public class ApiBridge {
 
     service.toggleUser(routingContext, pool, userId);
   }
+
+  public static void getOnlineUsers(RoutingContext routingContext) {
+    service.getOnlineUsers(routingContext, pool);
+  }
 }

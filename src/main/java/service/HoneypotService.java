@@ -87,9 +87,15 @@ public class HoneypotService {
           Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", LOGIN_FAIL_ERROR));
           return;
         } else {
+
           Session session = routingContext.session();
           session.put("id", rows.iterator().next().getInteger("id").toString());
+          // Update last action on database
+          pool.preparedQuery("UPDATE users SET last_action = NOW() WHERE id = ?")
+            .execute(Tuple.of(session.get("id")));
+
           Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "login successful"));
+
         }
       }).onFailure(err -> {
         Response.sendFailure(routingContext, 500, err.getMessage());
@@ -142,6 +148,10 @@ public class HoneypotService {
           Response.sendFailure(routingContext, 403, USER_DISABLED_ERROR);
 
         } else {
+          // Update last action on database
+          pool.preparedQuery("UPDATE users SET last_action = NOW() WHERE id = ?")
+            .execute(Tuple.of(id));
+
           pool.preparedQuery("SELECT * FROM challenges WHERE challenge_id = ? AND flag = ?")
             .execute(Tuple.of(challengeId, flag))
             .onSuccess(rows -> {
@@ -187,6 +197,11 @@ public class HoneypotService {
           Response.sendFailure(routingContext, 403, USER_NOT_ADMIN_ERROR);
 
         } else {
+
+          // Update last action on database for the admin that made the toggle request
+          pool.preparedQuery("UPDATE users SET last_action = NOW() WHERE id = ?")
+            .execute(Tuple.of(requestingUsersId));
+
           pool.preparedQuery("SELECT * FROM users WHERE id = ?")
             .execute(Tuple.of(userIdToBeToggled))
             .onSuccess(user -> {
@@ -210,5 +225,46 @@ public class HoneypotService {
       }).onFailure(err -> {
         Response.sendFailure(routingContext, 500, err.getMessage());
       });
+  }
+
+  public void getOnlineUsers(RoutingContext routingContext, MySQLPool pool) {
+    String requestingUsersId = routingContext.session().get("id");
+    if (requestingUsersId == null) {
+      Response.sendJsonResponse(routingContext, 401, new JsonObject().put("error", NOT_LOGGED_IN_ERROR));
+      return;
+    }
+
+    pool.preparedQuery("SELECT * FROM users WHERE id = ?")
+      .execute(Tuple.of(requestingUsersId))
+      .onSuccess(result -> {
+        if (result.size() == 0) {
+
+          Response.sendFailure(routingContext, 404, USER_SESSION_NOT_FOUND_ERROR);
+
+        } else if (result.iterator().next().getBoolean("disabled")) {
+
+          Response.sendFailure(routingContext, 403, USER_DISABLED_ERROR);
+
+        } else if (!result.iterator().next().getBoolean("administrator")) {
+
+          Response.sendFailure(routingContext, 403, USER_NOT_ADMIN_ERROR);
+
+        } else {
+          // Get all users where last action was less than 30 minutes ago
+          pool.preparedQuery("SELECT * FROM users WHERE last_action > NOW() - INTERVAL 30 MINUTE")
+            .execute()
+            .onSuccess(onlineUsers -> {
+              JsonObject response = new JsonObject();
+              for (Row row : onlineUsers) {
+                response.put(row.getInteger("id").toString(), new JsonObject()
+                  .put("username", row.getString("username"))
+                  .put("disabled", row.getBoolean("disabled"))
+                  .put("admin", row.getBoolean("administrator")));
+              }
+              Response.sendJsonResponse(routingContext, 200, response);
+            });
+        }}).onFailure(err -> {
+          Response.sendFailure(routingContext, 500, err.getMessage());
+        });
   }
 }
