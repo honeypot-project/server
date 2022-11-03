@@ -15,7 +15,7 @@ public class HoneypotService {
   private static final String USER_DISABLED_ERROR = "user disabled";
   private static final String USER_NOT_ADMIN_ERROR = "user not admin";
   private static final String USER_SESSION_NOT_FOUND_ERROR = "please login again";
-
+  private static final String USER_NOT_FOUND_ERROR = "user not found";
 
 
   public void getUsers(RoutingContext routingContext, MySQLPool pool) {
@@ -164,15 +164,15 @@ public class HoneypotService {
     }
   }
 
-  public void disableUser(RoutingContext routingContext, MySQLPool pool, String userId) {
-    String id = routingContext.session().get("id");
-    if (id == null) {
+  public void toggleUser(RoutingContext routingContext, MySQLPool pool, String userIdToBeToggled) {
+    String requestingUsersId = routingContext.session().get("id");
+    if (requestingUsersId == null) {
       Response.sendJsonResponse(routingContext, 401, new JsonObject().put("error", NOT_LOGGED_IN_ERROR));
       return;
     }
 
     pool.preparedQuery("SELECT * FROM users WHERE id = ?")
-      .execute(Tuple.of(id))
+      .execute(Tuple.of(requestingUsersId))
       .onSuccess(result -> {
         if (result.size() == 0) {
 
@@ -187,10 +187,24 @@ public class HoneypotService {
           Response.sendFailure(routingContext, 403, USER_NOT_ADMIN_ERROR);
 
         } else {
-          pool.preparedQuery("UPDATE users SET disabled = true WHERE id = ?")
-            .execute(Tuple.of(userId))
-            .onSuccess(res -> {
-              Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "user disabled"));
+          pool.preparedQuery("SELECT * FROM users WHERE id = ?")
+            .execute(Tuple.of(userIdToBeToggled))
+            .onSuccess(user -> {
+              if (user.size() == 0) {
+
+                Response.sendFailure(routingContext, 404, USER_NOT_FOUND_ERROR);
+
+              } else {
+                pool.preparedQuery("UPDATE users SET disabled = ? WHERE id = ?")
+                  .execute(Tuple.of(!user.iterator().next().getBoolean("disabled"), userIdToBeToggled))
+                  .onSuccess(res -> {
+                    if (user.iterator().next().getBoolean("disabled")) {
+                      Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "user enabled"));
+                    } else {
+                      Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "user disabled"));
+                    }
+                  });
+              }
             });
         }
       }).onFailure(err -> {

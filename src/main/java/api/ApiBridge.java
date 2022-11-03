@@ -77,10 +77,10 @@ public class ApiBridge {
     service.submitChallenge(routingContext, pool, challengeId, flag);
   }
 
-  public static void disableUser(RoutingContext routingContext) {
+  public static void toggleUser(RoutingContext routingContext) {
     Request request = Request.from(routingContext);
     String userId = request.getUserId();
 
-    service.disableUser(routingContext, pool, userId);
+    service.toggleUser(routingContext, pool, userId);
   }
 }
