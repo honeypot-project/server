@@ -40,12 +40,9 @@ public class MainVerticle extends AbstractVerticle {
     // Create session handler
     SessionStore store = SessionStore.create(vertx);
     SessionHandler sessionHandler = SessionHandler.create(store);
-    router.route().handler(sessionHandler);
-
-    router.route().handler(createCorsHandler());
-    router.route().handler(BodyHandler.create()
-      .setUploadsDirectory("image-uploads")
-      .setBodyLimit(500 * KB));
+    router.route().handler(sessionHandler)
+      .handler(BodyHandler.create().setBodyLimit(1000 * KB))
+      .handler(createCorsHandler());
 
     router.get("/").handler(ApiBridge::hello);
     router.post("/test").handler(ApiBridge::testBody);
@@ -61,6 +58,9 @@ public class MainVerticle extends AbstractVerticle {
 
     router.post("/login").handler(ApiBridge::login);
 
+    // Get user details
+    router.get("/user").handler(ApiBridge::getUser);
+
     // Gets all users
     router.get("/users").handler(ApiBridge::getUsers);
     // Gets online users
@@ -70,7 +70,10 @@ public class MainVerticle extends AbstractVerticle {
     router.get("/toggleUser").handler(ApiBridge::toggleUser);
 
     // Image upload function
-    router.post("/upload").handler(ApiBridge::uploadImg);
+    router.post("/upload").handler(BodyHandler.create()
+        .setUploadsDirectory("image-uploads")
+        .setBodyLimit(10000 * KB))
+      .handler(ApiBridge::uploadImg);
     router.route("/uploads/imgs/*").handler(
       StaticHandler.create("image-uploads").setCachingEnabled(false)
     );

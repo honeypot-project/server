@@ -284,4 +284,34 @@ public class HoneypotService {
           Response.sendFailure(routingContext, 500, err.getMessage());
         });
   }
+
+  public void getUser(RoutingContext routingContext, MySQLPool pool) {
+    String userId = routingContext.session().get("id");
+    System.out.println(userId);
+
+    if (userId == null) {
+      Response.sendJsonResponse(routingContext, 401, new JsonObject().put("error", NOT_LOGGED_IN_ERROR));
+      return;
+    }
+
+    // Get user and from database
+    pool.preparedQuery("SELECT * FROM users WHERE id = ?")
+      .execute(Tuple.of(userId))
+      .onSuccess(userDetails -> {
+        if (userDetails.size() == 0) {
+
+          Response.sendFailure(routingContext, 404, USER_NOT_FOUND_ERROR);
+
+        } else {
+          Response.sendJsonResponse(routingContext, 200, new JsonObject()
+            .put("username", userDetails.iterator().next().getString("username"))
+            .put("img_id", userDetails.iterator().next().getString("img_id"))
+            .put("disabled", userDetails.iterator().next().getBoolean("disabled"))
+            .put("admin", userDetails.iterator().next().getBoolean("administrator")));
+        }
+      }).onFailure(err -> {
+        Response.sendFailure(routingContext, 500, err.getMessage());
+      });
+
+  }
 }

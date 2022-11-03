@@ -48,6 +48,7 @@ public class ApiBridge {
     for (FileUpload file : files) {
       System.out.println(file.fileName());
     }
+    Response.sendJsonResponse(routingContext, 200, new JsonObject().put("message", "ok"));
   }
 
   public static void getUsers(RoutingContext routingContext) {
@@ -83,5 +84,11 @@ public class ApiBridge {
 
   public static void getOnlineUsers(RoutingContext routingContext) {
     service.getOnlineUsers(routingContext, pool);
+  }
+
+  public static void getUser(RoutingContext routingContext) {
+    Request request = Request.from(routingContext);
+
+    service.getUser(routingContext, pool);
   }
 }
