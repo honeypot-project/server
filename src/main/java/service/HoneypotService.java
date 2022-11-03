@@ -203,9 +203,10 @@ public class HoneypotService {
               }
             });
 
-        }}).onFailure(err -> {
-          Response.sendFailure(routingContext, 500, err.getMessage());
-        });
+        }
+      }).onFailure(err -> {
+        Response.sendFailure(routingContext, 500, err.getMessage());
+      });
   }
 
   public void toggleUser(RoutingContext routingContext, MySQLPool pool, String userIdToBeToggled) {
@@ -383,13 +384,8 @@ public class HoneypotService {
           String fileName = UUID.randomUUID().toString() + "." + extension;
 
           // Create uploads folder if it doesn't exist
-
-          if (!Files.exists(Paths.get("uploads/images/"))) {
-            try {
-              Files.createDirectory(Paths.get("uploads/images/"));
-            } catch (IOException e) {
-              e.printStackTrace();
-            }
+          if (!new File("uploads/images/").exists()) {
+            new File("uploads/images").mkdirs();
           }
 
           // Move file to uploads folder
