@@ -31,7 +31,6 @@ public class ApiBridge {
   }
 
   public static void register(RoutingContext routingContext) {
-    System.out.println("Registering");
     Request request = Request.from(routingContext);
     String username = request.getUsername();
     String password = request.getPassword();
@@ -56,8 +55,6 @@ public class ApiBridge {
   }
 
   public static void login(RoutingContext routingContext) {
-    Session session = routingContext.session();
-
     Request request = Request.from(routingContext);
     String username = request.getUsername();
     String password = request.getPassword();

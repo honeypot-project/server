@@ -19,7 +19,6 @@ public class HoneypotService {
 
 
   public void getUsers(RoutingContext routingContext, MySQLPool pool) {
-    JsonObject response = new JsonObject();
     String id = routingContext.session().get("id");
 
     if (id == null) {
@@ -45,8 +44,9 @@ public class HoneypotService {
             } else {
                 pool.query("SELECT * FROM users")
                   .execute()
-                  .onSuccess(rows -> {
-                    for (Row row : rows) {
+                  .onSuccess(users -> {
+                    JsonObject response = new JsonObject();
+                    for (Row row : users) {
                       response.put(row.getInteger("id").toString(), new JsonObject()
                         .put("username", row.getString("username"))
                         .put("disabled", row.getBoolean("disabled"))
@@ -90,6 +90,7 @@ public class HoneypotService {
 
           Session session = routingContext.session();
           session.put("id", rows.iterator().next().getInteger("id").toString());
+
           // Update last action on database
           pool.preparedQuery("UPDATE users SET last_action = NOW() WHERE id = ?")
             .execute(Tuple.of(session.get("id")));
@@ -112,10 +113,16 @@ public class HoneypotService {
     pool.preparedQuery("SELECT * FROM solved_challenges WHERE user_id = ?")
       .execute(Tuple.of(id))
       .onSuccess(solvedChallenges -> {
-        JsonObject response = new JsonObject();
         pool.preparedQuery("SELECT * FROM challenges")
           .execute()
           .onSuccess(challenges -> {
+
+            // Update last action on database
+            pool.preparedQuery("UPDATE users SET last_action = NOW() WHERE id = ?")
+              .execute(Tuple.of(id));
+
+
+            JsonObject response = new JsonObject();
             for (Row challenge : challenges) {
               response.put(challenge.getInteger("challenge_id").toString(), "unsolved");
             }
@@ -156,16 +163,26 @@ public class HoneypotService {
             .execute(Tuple.of(challengeId, flag))
             .onSuccess(rows -> {
               if (rows.size() == 0) {
+
                 Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", "wrong flag"));
-                return;
+
+              } else {
+
+                // check if challenge already solved
+                pool.preparedQuery("SELECT * FROM solved_challenges WHERE user_id = ? AND solved_challenge_id = ?")
+                  .execute(Tuple.of(id, challengeId))
+                  .onSuccess(solvedChallenges -> {
+                    if (solvedChallenges.size() != 0) {
+                      Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", "challenge already solved"));
+                    } else {
+                      pool.preparedQuery("INSERT INTO solved_challenges (user_id, solved_challenge_id) VALUES (?, ?)")
+                        .execute(Tuple.of(id, challengeId))
+                        .onSuccess(res -> {
+                          Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "challenge solved"));
+                        });
+                    }
+                  });
               }
-
-              pool.preparedQuery("INSERT INTO solved_challenges (user_id, solved_challenge_id) VALUES (?, ?)")
-                .execute(Tuple.of(id, challengeId))
-                .onSuccess(res -> {
-                  Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "challenge solved"));
-                });
-
             });
         }
       }).onFailure(err -> {
