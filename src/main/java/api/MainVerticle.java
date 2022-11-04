@@ -75,8 +75,9 @@ public class MainVerticle extends AbstractVerticle {
 
     // Challenges
     router.get("/challenges").handler(ApiBridge::getChallenges);
-    router.post("/challenges").handler(ApiBridge::submitChallenge);
+    router.post("/challenges").handler(BodyHandler.create()).handler(ApiBridge::submitChallenge);
 
+    // Start the web server and tell it to use the router to handle requests.
 
     vertx.createHttpServer()
       .requestHandler(router)
