@@ -336,6 +336,7 @@ public class HoneypotService {
   public void uploadImg(RoutingContext routingContext, MySQLPool pool, List<FileUpload> files) {
     // Check if user is logged in
     String userId = routingContext.session().get("id");
+
     if (userId == null) {
       Response.sendJsonResponse(routingContext, 401, new JsonObject().put("error", NOT_LOGGED_IN_ERROR));
       deleteFiles(files);
@@ -394,10 +395,12 @@ public class HoneypotService {
           // Delete old image
           String oldImgId = userDetails.iterator().next().getString("img_id");
           if (oldImgId != null) {
-            try {
-              Files.delete(Paths.get("uploads/images/" + oldImgId));
-            } catch (IOException e) {
-              e.printStackTrace();
+            if (! new File("uploads/images/"+ oldImgId).exists()) {
+              try {
+                Files.delete(Paths.get("uploads/images/" + oldImgId));
+              } catch (IOException e) {
+                e.printStackTrace();
+              }
             }
           }
 
