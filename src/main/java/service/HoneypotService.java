@@ -395,7 +395,7 @@ public class HoneypotService {
           // Delete old image
           String oldImgId = userDetails.iterator().next().getString("img_id");
           if (oldImgId != null) {
-            if (! new File("uploads/images/"+ oldImgId).exists()) {
+            if (new File("uploads/images/"+ oldImgId).exists()) {
               try {
                 Files.delete(Paths.get("uploads/images/" + oldImgId));
               } catch (IOException e) {
