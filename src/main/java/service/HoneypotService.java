@@ -182,7 +182,7 @@ public class HoneypotService {
             .onSuccess(rows -> {
               if (rows.size() == 0) {
 
-                Response.sendFailure(routingContext, 400, "wrong flag");
+                Response.sendFailure(routingContext, 404, "wrong flag");
 
               } else {
 
