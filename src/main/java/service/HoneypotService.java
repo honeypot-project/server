@@ -30,7 +30,7 @@ public class HoneypotService {
     String id = routingContext.session().get("id");
 
     if (id == null) {
-      Response.sendFailure(routingContext, 401, NOT_LOGGED_IN_ERROR);
+      Response.sendJsonResponse(routingContext, 401, NOT_LOGGED_IN_ERROR);
       return;
     }
 
@@ -78,7 +78,7 @@ public class HoneypotService {
       .execute(Tuple.of(username))
       .onSuccess(rows -> {
         if (rows.size() != 0) {
-          Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", USERNAME_TAKEN_ERROR));
+          Response.sendFailure(routingContext, 400, USERNAME_TAKEN_ERROR);
         } else {
 
           // TODO: Maybe add password hashing / salt+pepper here
@@ -99,7 +99,7 @@ public class HoneypotService {
       .execute(Tuple.of(username, password))
       .onSuccess(rows -> {
         if (rows.size() == 0) {
-          Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", LOGIN_FAIL_ERROR));
+          Response.sendFailure(routingContext, 400, LOGIN_FAIL_ERROR);
           return;
         } else {
 
@@ -121,7 +121,7 @@ public class HoneypotService {
   public void getChallenges(RoutingContext routingContext, MySQLPool pool) {
     String id = routingContext.session().get("id");
     if (id == null) {
-      Response.sendJsonResponse(routingContext, 401, new JsonObject().put("error", NOT_LOGGED_IN_ERROR));
+      Response.sendFailure(routingContext, 401, NOT_LOGGED_IN_ERROR);
       return;
     }
 
@@ -157,7 +157,7 @@ public class HoneypotService {
 
     String id = routingContext.session().get("id");
     if (id == null) {
-      Response.sendJsonResponse(routingContext, 401, new JsonObject().put("error", NOT_LOGGED_IN_ERROR));
+      Response.sendFailure(routingContext, 401, NOT_LOGGED_IN_ERROR);
       return;
     }
 
@@ -170,7 +170,7 @@ public class HoneypotService {
 
         } else if (result.iterator().next().getBoolean("disabled")) {
 
-          Response.sendFailure(routingContext, 403, USER_DISABLED_ERROR);
+          Response.sendFailure(routingContext, 409, USER_DISABLED_ERROR);
 
         } else {
           // Update last action on database
@@ -182,7 +182,7 @@ public class HoneypotService {
             .onSuccess(rows -> {
               if (rows.size() == 0) {
 
-                Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", "wrong flag"));
+                Response.sendFailure(routingContext, 400, "wrong flag");
 
               } else {
 
@@ -191,7 +191,7 @@ public class HoneypotService {
                   .execute(Tuple.of(id, challengeId))
                   .onSuccess(solvedChallenges -> {
                     if (solvedChallenges.size() != 0) {
-                      Response.sendJsonResponse(routingContext, 400, new JsonObject().put("error", "challenge already solved"));
+                      Response.sendFailure(routingContext, 400, "challenge already solved");
                     } else {
                       pool.preparedQuery("INSERT INTO solved_challenges (user_id, solved_challenge_id) VALUES (?, ?)")
                         .execute(Tuple.of(id, challengeId))
@@ -212,7 +212,7 @@ public class HoneypotService {
   public void toggleUser(RoutingContext routingContext, MySQLPool pool, String userIdToBeToggled) {
     String requestingUsersId = routingContext.session().get("id");
     if (requestingUsersId == null) {
-      Response.sendJsonResponse(routingContext, 401, new JsonObject().put("error", NOT_LOGGED_IN_ERROR));
+      Response.sendFailure(routingContext, 401, NOT_LOGGED_IN_ERROR);
       return;
     }
 
@@ -265,7 +265,7 @@ public class HoneypotService {
   public void getOnlineUsers(RoutingContext routingContext, MySQLPool pool) {
     String requestingUsersId = routingContext.session().get("id");
     if (requestingUsersId == null) {
-      Response.sendJsonResponse(routingContext, 401, new JsonObject().put("error", NOT_LOGGED_IN_ERROR));
+      Response.sendFailure(routingContext, 401, NOT_LOGGED_IN_ERROR);
       return;
     }
 
@@ -308,7 +308,7 @@ public class HoneypotService {
     String userId = routingContext.session().get("id");
 
     if (userId == null) {
-      Response.sendJsonResponse(routingContext, 401, new JsonObject().put("error", NOT_LOGGED_IN_ERROR));
+      Response.sendFailure(routingContext, 401, NOT_LOGGED_IN_ERROR);
       return;
     }
 
@@ -338,7 +338,7 @@ public class HoneypotService {
     String userId = routingContext.session().get("id");
 
     if (userId == null) {
-      Response.sendJsonResponse(routingContext, 401, new JsonObject().put("error", NOT_LOGGED_IN_ERROR));
+      Response.sendFailure(routingContext, 401, NOT_LOGGED_IN_ERROR);
       deleteFiles(files);
       return;
     }
