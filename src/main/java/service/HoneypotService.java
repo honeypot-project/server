@@ -24,6 +24,7 @@ public class HoneypotService {
   private static final String USER_NOT_ADMIN_ERROR = "user not admin";
   private static final String USER_SESSION_NOT_FOUND_ERROR = "please login again";
   private static final String USER_NOT_FOUND_ERROR = "user not found";
+  private static final String USERNAME_OR_PASSWORD_EMPTY_ERROR = "username or password can not be empty";
 
 
   public void getUsers(RoutingContext routingContext, MySQLPool pool) {
@@ -74,8 +75,27 @@ public class HoneypotService {
   }
 
   public void addUser(RoutingContext routingContext, MySQLPool pool, String username, String password) {
+
+    // Check if username and password is not empty
+    Boolean usernameEmpty = username == null || username.isEmpty();
+    Boolean passwordEmpty = password == null || password.isEmpty();
+    if (usernameEmpty || passwordEmpty) {
+      Response.sendFailure(routingContext, 400, USERNAME_OR_PASSWORD_EMPTY_ERROR);
+      return;
+    }
+
+    // Validate username
+    if (!username.matches("^[a-zA-Z0-9]+$")) {
+      Response.sendFailure(routingContext, 400, "username can only contain letters and numbers");
+      return;
+    }
+
+    // Lowercase username
+    final String validatedUsername = username.toLowerCase();
+
+    // Check if username is taken
     pool.preparedQuery("SELECT * FROM users WHERE username = ?")
-      .execute(Tuple.of(username))
+      .execute(Tuple.of(validatedUsername))
       .onSuccess(rows -> {
         if (rows.size() != 0) {
           Response.sendFailure(routingContext, 400, USERNAME_TAKEN_ERROR);
@@ -84,7 +104,7 @@ public class HoneypotService {
           // TODO: Maybe add password hashing / salt+pepper here
 
           pool.preparedQuery("INSERT INTO users (username, password) VALUES (?, ?)")
-            .execute(Tuple.of(username, password))
+            .execute(Tuple.of(validatedUsername, password))
             .onSuccess(res -> {
               Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "user added"));
             });
