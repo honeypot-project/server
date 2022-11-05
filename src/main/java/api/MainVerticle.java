@@ -30,8 +30,8 @@ public class MainVerticle extends AbstractVerticle {
         .setPort(3306)
         .setHost("localhost")
         .setDatabase("honeypot")
-        .setUser("root")
-        .setPassword("123"),
+        .setUser("honeypot")
+        .setPassword("EdefvRAnpCYroX8pnt"),
       new PoolOptions().setMaxSize(5));
 
     // Create a router object.
