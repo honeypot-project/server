@@ -8,6 +8,7 @@ import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.Session;
 import io.vertx.mysqlclient.MySQLPool;
+import io.vertx.sqlclient.PrepareOptions;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.Tuple;
 
@@ -27,6 +28,8 @@ public class HoneypotService {
   private static final String USER_SESSION_NOT_FOUND_ERROR = "please login again";
   private static final String USER_NOT_FOUND_ERROR = "user not found";
   private static final String USERNAME_OR_PASSWORD_EMPTY_ERROR = "username or password can not be empty";
+  private static final String LOGIN_SUCCESSFUL = "login successful";
+  private static final String SQL_SELECT_USER_BY_ID = "SELECT * FROM users WHERE id = ?";
 
 
   public void getUsers(RoutingContext routingContext, MySQLPool pool) {
@@ -37,7 +40,7 @@ public class HoneypotService {
       return;
     }
 
-    pool.preparedQuery("SELECT * FROM users WHERE id = ?")
+    pool.preparedQuery(SQL_SELECT_USER_BY_ID)
       .execute(Tuple.of(id))
       .onSuccess(result -> {
         if (result.size() == 0) {
@@ -71,9 +74,7 @@ public class HoneypotService {
               Response.sendJsonResponse(routingContext, 200, response);
             });
         }
-      }).onFailure(err -> {
-        Response.sendFailure(routingContext, 500, err.getMessage());
-      });
+      }).onFailure(err -> Response.sendFailure(routingContext, 500, err.getMessage()));
   }
 
   public void addUser(RoutingContext routingContext, MySQLPool pool, String username, String password) {
@@ -109,13 +110,9 @@ public class HoneypotService {
           // Upload username and hashed password to database
           pool.preparedQuery("INSERT INTO users (username, password) VALUES (?, ?)")
             .execute(Tuple.of(validatedUsername, hash.getResult()))
-            .onSuccess(res -> {
-              Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "user added"));
-            });
+            .onSuccess(res -> Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "user added")));
         }
-      }).onFailure(err -> {
-        Response.sendFailure(routingContext, 500, err.getMessage());
-      });
+      }).onFailure(err -> Response.sendFailure(routingContext, 500, err.getMessage()));
   }
 
   public void login(RoutingContext routingContext, MySQLPool pool, String username, String password) {
@@ -136,30 +133,34 @@ public class HoneypotService {
     // Lowercase username
     final String validatedUsername = username.toLowerCase();
 
-    // TODO: get user from db and compare password hashes here
-
-
-    pool.preparedQuery("SELECT * FROM users WHERE username = ? AND password = ?")
-      .execute(Tuple.of(username, password))
+    // Check if user exists
+    pool.preparedQuery("SELECT * FROM users WHERE username = ?")
+      .execute(Tuple.of(validatedUsername))
       .onSuccess(rows -> {
         if (rows.size() == 0) {
-          Response.sendFailure(routingContext, 400, LOGIN_FAIL_ERROR);
-          return;
+          Response.sendFailure(routingContext, 404, USER_NOT_FOUND_ERROR);
         } else {
+          Row row = rows.iterator().next();
+          String storedHash = row.getString("password");
 
-          Session session = routingContext.session();
-          session.put("id", rows.iterator().next().getInteger("id").toString());
+          // Check if password is correct
+          if (Password.check(password, storedHash).withArgon2()) {
 
-          // Update last action on database
-          pool.preparedQuery("UPDATE users SET last_action = NOW() WHERE id = ?")
-            .execute(Tuple.of(session.get("id")));
+            // Create session
+            Session session = routingContext.session();
+            session.put("id", row.getInteger("id").toString());
 
-          Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "login successful"));
+            Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", LOGIN_SUCCESSFUL));
 
+            // Update last action on database
+            pool.preparedQuery("UPDATE users SET last_action = NOW() WHERE id = ?")
+              .execute(Tuple.of(row.getInteger("id")));
+
+          } else {
+            Response.sendFailure(routingContext, 400, LOGIN_FAIL_ERROR);
+          }
         }
-      }).onFailure(err -> {
-        Response.sendFailure(routingContext, 500, err.getMessage());
-      });
+      }).onFailure(err -> Response.sendFailure(routingContext, 500, err.getMessage()));
   }
 
   public void getChallenges(RoutingContext routingContext, MySQLPool pool) {
@@ -171,30 +172,26 @@ public class HoneypotService {
 
     pool.preparedQuery("SELECT * FROM solved_challenges WHERE user_id = ?")
       .execute(Tuple.of(id))
-      .onSuccess(solvedChallenges -> {
-        pool.preparedQuery("SELECT * FROM challenges")
-          .execute()
-          .onSuccess(challenges -> {
+      .onSuccess(solvedChallenges -> pool.preparedQuery("SELECT * FROM challenges")
+        .execute()
+        .onSuccess(challenges -> {
 
-            // Update last action on database
-            pool.preparedQuery("UPDATE users SET last_action = NOW() WHERE id = ?")
-              .execute(Tuple.of(id));
+          // Update last action on database
+          pool.preparedQuery("UPDATE users SET last_action = NOW() WHERE id = ?")
+            .execute(Tuple.of(id));
 
 
-            JsonObject response = new JsonObject();
-            for (Row challenge : challenges) {
-              response.put(challenge.getInteger("challenge_id").toString(), "unsolved");
-            }
+          JsonObject response = new JsonObject();
+          for (Row challenge : challenges) {
+            response.put(challenge.getInteger("challenge_id").toString(), "unsolved");
+          }
 
-            for (Row solvedChallenge : solvedChallenges) {
-              response.put(solvedChallenge.getInteger("solved_challenge_id").toString(), "solved");
-            }
+          for (Row solvedChallenge : solvedChallenges) {
+            response.put(solvedChallenge.getInteger("solved_challenge_id").toString(), "solved");
+          }
 
-            Response.sendJsonResponse(routingContext, 200, response);
-          });
-      }).onFailure(err -> {
-        Response.sendFailure(routingContext, 500, err.getMessage());
-      });
+          Response.sendJsonResponse(routingContext, 200, response);
+        })).onFailure(err -> Response.sendFailure(routingContext, 500, err.getMessage()));
   }
 
   public void submitChallenge(RoutingContext routingContext, MySQLPool pool, String challengeId, String flag) {
@@ -205,7 +202,7 @@ public class HoneypotService {
       return;
     }
 
-    pool.preparedQuery("SELECT * FROM users WHERE id = ?")
+    pool.preparedQuery(SQL_SELECT_USER_BY_ID)
       .execute(Tuple.of(id))
       .onSuccess(result -> {
         if (result.size() == 0) {
@@ -239,18 +236,14 @@ public class HoneypotService {
                     } else {
                       pool.preparedQuery("INSERT INTO solved_challenges (user_id, solved_challenge_id) VALUES (?, ?)")
                         .execute(Tuple.of(id, challengeId))
-                        .onSuccess(res -> {
-                          Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "challenge solved"));
-                        });
+                        .onSuccess(res -> Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "challenge solved")));
                     }
                   });
               }
             });
 
         }
-      }).onFailure(err -> {
-        Response.sendFailure(routingContext, 500, err.getMessage());
-      });
+      }).onFailure(err -> Response.sendFailure(routingContext, 500, err.getMessage()));
   }
 
   public void toggleUser(RoutingContext routingContext, MySQLPool pool, String userIdToBeToggled) {
@@ -260,7 +253,7 @@ public class HoneypotService {
       return;
     }
 
-    pool.preparedQuery("SELECT * FROM users WHERE id = ?")
+    pool.preparedQuery(SQL_SELECT_USER_BY_ID)
       .execute(Tuple.of(requestingUsersId))
       .onSuccess(result -> {
         if (result.size() == 0) {
@@ -281,7 +274,7 @@ public class HoneypotService {
           pool.preparedQuery("UPDATE users SET last_action = NOW() WHERE id = ?")
             .execute(Tuple.of(requestingUsersId));
 
-          pool.preparedQuery("SELECT * FROM users WHERE id = ?")
+          pool.preparedQuery(SQL_SELECT_USER_BY_ID)
             .execute(Tuple.of(userIdToBeToggled))
             .onSuccess(user -> {
               if (user.size() == 0) {
@@ -301,9 +294,7 @@ public class HoneypotService {
               }
             });
         }
-      }).onFailure(err -> {
-        Response.sendFailure(routingContext, 500, err.getMessage());
-      });
+      }).onFailure(err -> Response.sendFailure(routingContext, 500, err.getMessage()));
   }
 
   public void getOnlineUsers(RoutingContext routingContext, MySQLPool pool) {
@@ -313,7 +304,7 @@ public class HoneypotService {
       return;
     }
 
-    pool.preparedQuery("SELECT * FROM users WHERE id = ?")
+    pool.preparedQuery(SQL_SELECT_USER_BY_ID)
       .execute(Tuple.of(requestingUsersId))
       .onSuccess(result -> {
         if (result.size() == 0) {
@@ -343,9 +334,7 @@ public class HoneypotService {
               Response.sendJsonResponse(routingContext, 200, response);
             });
         }
-      }).onFailure(err -> {
-        Response.sendFailure(routingContext, 500, err.getMessage());
-      });
+      }).onFailure(err -> Response.sendFailure(routingContext, 500, err.getMessage()));
   }
 
   public void getUser(RoutingContext routingContext, MySQLPool pool) {
@@ -357,7 +346,7 @@ public class HoneypotService {
     }
 
     // Get user and from database
-    pool.preparedQuery("SELECT * FROM users WHERE id = ?")
+    pool.preparedQuery(SQL_SELECT_USER_BY_ID)
       .execute(Tuple.of(userId))
       .onSuccess(userDetails -> {
         if (userDetails.size() == 0) {
@@ -371,9 +360,7 @@ public class HoneypotService {
             .put("disabled", userDetails.iterator().next().getBoolean("disabled"))
             .put("admin", userDetails.iterator().next().getBoolean("administrator")));
         }
-      }).onFailure(err -> {
-        Response.sendFailure(routingContext, 500, err.getMessage());
-      });
+      }).onFailure(err -> Response.sendFailure(routingContext, 500, err.getMessage()));
 
   }
 
@@ -388,7 +375,7 @@ public class HoneypotService {
     }
 
     // Validate user
-    pool.preparedQuery("SELECT * FROM users WHERE id = ?")
+    pool.preparedQuery(SQL_SELECT_USER_BY_ID)
       .execute(Tuple.of(userId))
       .onSuccess(userDetails -> {
         if (userDetails.size() == 0) {
@@ -406,7 +393,7 @@ public class HoneypotService {
           Response.sendFailure(routingContext, 400, "Only one file can be uploaded at a time");
           deleteFiles(files);
 
-        } else if (files.size() == 0) {
+        } else if (files.isEmpty()) {
 
           Response.sendFailure(routingContext, 400, "No file was uploaded");
           deleteFiles(files);
@@ -451,13 +438,9 @@ public class HoneypotService {
           // Update database with new image id
           pool.preparedQuery("UPDATE users SET img_id = ? WHERE id = ?")
             .execute(Tuple.of(fileName, userId))
-            .onSuccess(res -> {
-              Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "image uploaded"));
-            });
+            .onSuccess(res -> Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "image uploaded")));
         }
-      }).onFailure(err -> {
-        Response.sendFailure(routingContext, 500, err.getMessage());
-      });
+      }).onFailure(err -> Response.sendFailure(routingContext, 500, err.getMessage()));
   }
 
   private void deleteFiles(List<FileUpload> files) {

@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="challenges.TestMainVerticle" tests="1" skipped="0" failures="0" errors="0" timestamp="2022-10-31T12:59:43" hostname="LAPTOP" time="0.368">
-  <properties/>
-  <testcase name="verticle_deployed(Vertx, VertxTestContext)" classname="challenges.TestMainVerticle" time="0.368"/>
-  <system-out><![CDATA[HTTP server started on port 8888
-]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>
