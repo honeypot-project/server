@@ -35,6 +35,7 @@ dependencies {
   implementation("io.vertx:vertx-codegen:$vertxVersion")
   implementation("io.vertx:vertx-jdbc-client:$vertxVersion")
   implementation("io.vertx:vertx-mysql-client:$vertxVersion")
+  implementation("com.password4j:password4j:1.6.0")
 
 
   testImplementation("io.vertx:vertx-junit5")

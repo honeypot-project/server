@@ -23,7 +23,6 @@ public class ApiBridge {
     String password = request.getPassword();
     // Hash password
 
-
     service.addUser(routingContext, pool, username, password);
   }
 

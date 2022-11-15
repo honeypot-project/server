@@ -1,6 +1,8 @@
 package service;
 
 import api.Response;
+import com.password4j.Hash;
+import com.password4j.Password;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.RoutingContext;
@@ -101,10 +103,12 @@ public class HoneypotService {
           Response.sendFailure(routingContext, 400, USERNAME_TAKEN_ERROR);
         } else {
 
-          // TODO: Maybe add password hashing / salt+pepper here
+          // Hash password
+          Hash hash = Password.hash(password).addRandomSalt().withArgon2();
 
+          // Upload username and hashed password to database
           pool.preparedQuery("INSERT INTO users (username, password) VALUES (?, ?)")
-            .execute(Tuple.of(validatedUsername, password))
+            .execute(Tuple.of(validatedUsername, hash.getResult()))
             .onSuccess(res -> {
               Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "user added"));
             });
@@ -115,6 +119,26 @@ public class HoneypotService {
   }
 
   public void login(RoutingContext routingContext, MySQLPool pool, String username, String password) {
+    // Check if username and password is not empty
+    Boolean usernameEmpty = username == null || username.isEmpty();
+    Boolean passwordEmpty = password == null || password.isEmpty();
+    if (usernameEmpty || passwordEmpty) {
+      Response.sendFailure(routingContext, 400, USERNAME_OR_PASSWORD_EMPTY_ERROR);
+      return;
+    }
+
+    // Validate username
+    if (!username.matches("^[a-zA-Z0-9]+$")) {
+      Response.sendFailure(routingContext, 400, "username can only contain letters and numbers");
+      return;
+    }
+
+    // Lowercase username
+    final String validatedUsername = username.toLowerCase();
+
+    // TODO: get user from db and compare password hashes here
+
+
     pool.preparedQuery("SELECT * FROM users WHERE username = ? AND password = ?")
       .execute(Tuple.of(username, password))
       .onSuccess(rows -> {
