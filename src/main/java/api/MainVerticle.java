@@ -44,8 +44,6 @@ public class MainVerticle extends AbstractVerticle {
     router.route().handler(createCorsHandler());
 
     router.get("/").handler(ApiBridge::hello);
-    router.get("/test").handler(ApiBridge::testPath);
-    router.post("/test").handler(BodyHandler.create()).handler(ApiBridge::testBody);
 
     // Login
     router.post("/login").handler(BodyHandler.create()).handler(ApiBridge::login);
@@ -84,6 +82,7 @@ public class MainVerticle extends AbstractVerticle {
       .listen(8080)
       .onFailure(cause -> shutDown("Failed to start server", cause))
       .onSuccess(server -> {
+        System.out.println("server started");
         LOGGER.log(Level.INFO, "Server is listening on port: {0}", server.actualPort());
         startPromise.complete();
       });

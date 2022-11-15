@@ -3,11 +3,9 @@ package api;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.RoutingContext;
-import io.vertx.ext.web.Session;
 import io.vertx.mysqlclient.MySQLPool;
 import service.HoneypotService;
 
-import java.io.File;
 import java.util.List;
 
 public class ApiBridge {
@@ -17,18 +15,6 @@ public class ApiBridge {
 
   public static void hello(RoutingContext routingContext) {
     Response.sendJsonResponse(routingContext, 200, new JsonObject().put("message", "ok"));
-  }
-
-  public static void testBody(RoutingContext routingContext) {
-    Request request = Request.from(routingContext);
-    String input = request.getTestBody();
-    Response.sendJsonResponse(routingContext, 200, new JsonObject().put("you said", input));
-  }
-
-  public static void testPath(RoutingContext routingContext) {
-    Request request = Request.from(routingContext);
-    String input = request.getTestRequestParams();
-    Response.sendJsonResponse(routingContext, 200, new JsonObject().put("you said", input));
   }
 
   public static void register(RoutingContext routingContext) {
@@ -85,8 +71,6 @@ public class ApiBridge {
   }
 
   public static void getUser(RoutingContext routingContext) {
-    Request request = Request.from(routingContext);
-
     service.getUser(routingContext, pool);
   }
 }
