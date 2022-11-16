@@ -8,7 +8,6 @@ import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.Session;
 import io.vertx.mysqlclient.MySQLPool;
-import io.vertx.sqlclient.PrepareOptions;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.Tuple;
 
@@ -30,6 +29,8 @@ public class HoneypotService {
   private static final String USERNAME_OR_PASSWORD_EMPTY_ERROR = "username or password can not be empty";
   private static final String LOGIN_SUCCESSFUL = "login successful";
   private static final String SQL_SELECT_USER_BY_ID = "SELECT * FROM users WHERE id = ?";
+  private static final String SQL_SELECT_ALL_USERS_JOIN_SOLVED_CHALLENGES = "SELECT users.id, users.username, users.disabled, users.administrator, sc.solved_challenge_id" +
+    " FROM users JOIN solved_challenges sc on users.id = sc.user_id";
 
 
   public void getUsers(RoutingContext routingContext, MySQLPool pool) {
@@ -60,17 +61,35 @@ public class HoneypotService {
           pool.preparedQuery("UPDATE users SET last_action = NOW() WHERE id = ?")
             .execute(Tuple.of(id));
 
-          // Get all users from DB
-          pool.query("SELECT * FROM users")
+          // Get all users from DB and join solved challenges table
+          pool.query(SQL_SELECT_ALL_USERS_JOIN_SOLVED_CHALLENGES)
             .execute()
             .onSuccess(users -> {
+              // Create a json object for each user
               JsonObject response = new JsonObject();
-              for (Row row : users) {
-                response.put(row.getInteger("id").toString(), new JsonObject()
-                  .put("username", row.getString("username"))
-                  .put("disabled", row.getBoolean("disabled"))
-                  .put("admin", row.getBoolean("administrator")));
+              for (Row user : users) {
+                String userId = user.getInteger("id").toString();
+                if (!response.containsKey(userId)) {
+                  response.put(userId, new JsonObject());
+                  JsonObject userJson = response.getJsonObject(userId);
+                  userJson.put("id", userId);
+                  userJson.put("username", user.getString("username"));
+                  userJson.put("disabled", user.getBoolean("disabled"));
+                  userJson.put("administrator", user.getBoolean("administrator"));
+                  // Check if the user has solved any challenges
+                  if (user.getInteger("solved_challenge_id") != null) {
+                    userJson.put("challenges", "Solved: " + user.getInteger("solved_challenge_id"));
+                  }
+                } else {
+                  // This will only run if the user has solved multiple challenges
+                  // (aka multiple rows in the solved_challenges table)
+                  JsonObject userJson = response.getJsonObject(userId);
+                  if (user.getInteger("solved_challenge_id") != null) {
+                    userJson.put("challenges", userJson.getString("challenges") + ", " + user.getInteger("solved_challenge_id"));
+                  }
+                }
               }
+              // Send response
               Response.sendJsonResponse(routingContext, 200, response);
             });
         }
@@ -426,7 +445,7 @@ public class HoneypotService {
           // Delete old image
           String oldImgId = userDetails.iterator().next().getString("img_id");
           if (oldImgId != null) {
-            if (new File("uploads/images/"+ oldImgId).exists()) {
+            if (new File("uploads/images/" + oldImgId).exists()) {
               try {
                 Files.delete(Paths.get("uploads/images/" + oldImgId));
               } catch (IOException e) {
