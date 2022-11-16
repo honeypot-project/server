@@ -11,6 +11,7 @@ import io.vertx.mysqlclient.MySQLPool;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.Tuple;
 
+import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -31,6 +32,8 @@ public class HoneypotService {
   private static final String SQL_SELECT_USER_BY_ID = "SELECT * FROM users WHERE id = ?";
   private static final String SQL_SELECT_ALL_USERS_JOIN_SOLVED_CHALLENGES = "SELECT users.id, users.username, users.disabled, users.administrator, sc.solved_challenge_id" +
     " FROM users JOIN solved_challenges sc on users.id = sc.user_id";
+  private static final String SQL_ORDER_BY_CHALLENGE_ID = " ORDER BY solved_challenge_id";
+  private static final String SQL_WHERE_LAST_ACTION_IN_30_MINUTES = " WHERE users.last_action > NOW() - INTERVAL 30 MINUTE";
 
 
   public void getUsers(RoutingContext routingContext, MySQLPool pool) {
@@ -57,12 +60,12 @@ public class HoneypotService {
           Response.sendFailure(routingContext, 403, USER_NOT_ADMIN_ERROR);
 
         } else {
-          // Update last action on database
+          // Update last action of admin on database
           pool.preparedQuery("UPDATE users SET last_action = NOW() WHERE id = ?")
             .execute(Tuple.of(id));
 
           // Get all users from DB and join solved challenges table
-          pool.query(SQL_SELECT_ALL_USERS_JOIN_SOLVED_CHALLENGES)
+          pool.query(SQL_SELECT_ALL_USERS_JOIN_SOLVED_CHALLENGES + SQL_ORDER_BY_CHALLENGE_ID)
             .execute()
             .onSuccess(users -> {
               // Create a json object for each user
@@ -75,7 +78,7 @@ public class HoneypotService {
                   userJson.put("id", userId);
                   userJson.put("username", user.getString("username"));
                   userJson.put("disabled", user.getBoolean("disabled"));
-                  userJson.put("administrator", user.getBoolean("administrator"));
+                  userJson.put("admin", user.getBoolean("administrator"));
                   // Check if the user has solved any challenges
                   if (user.getInteger("solved_challenge_id") != null) {
                     userJson.put("challenges", "Solved: " + user.getInteger("solved_challenge_id"));
@@ -339,17 +342,35 @@ public class HoneypotService {
           Response.sendFailure(routingContext, 403, USER_NOT_ADMIN_ERROR);
 
         } else {
-          // Get all users where last action was less than 30 minutes ago
-          pool.preparedQuery("SELECT * FROM users WHERE last_action > NOW() - INTERVAL 30 MINUTE")
+          // Get all users from DB and join solved challenges table
+          pool.query(SQL_SELECT_ALL_USERS_JOIN_SOLVED_CHALLENGES + SQL_WHERE_LAST_ACTION_IN_30_MINUTES + SQL_ORDER_BY_CHALLENGE_ID)
             .execute()
-            .onSuccess(onlineUsers -> {
+            .onSuccess(users -> {
+              // Create a json object for each user
               JsonObject response = new JsonObject();
-              for (Row row : onlineUsers) {
-                response.put(row.getInteger("id").toString(), new JsonObject()
-                  .put("username", row.getString("username"))
-                  .put("disabled", row.getBoolean("disabled"))
-                  .put("admin", row.getBoolean("administrator")));
+              for (Row user : users) {
+                String userId = user.getInteger("id").toString();
+                if (!response.containsKey(userId)) {
+                  response.put(userId, new JsonObject());
+                  JsonObject userJson = response.getJsonObject(userId);
+                  userJson.put("id", userId);
+                  userJson.put("username", user.getString("username"));
+                  userJson.put("disabled", user.getBoolean("disabled"));
+                  userJson.put("admin", user.getBoolean("administrator"));
+                  // Check if the user has solved any challenges
+                  if (user.getInteger("solved_challenge_id") != null) {
+                    userJson.put("challenges", "Solved: " + user.getInteger("solved_challenge_id"));
+                  }
+                } else {
+                  // This will only run if the user has solved multiple challenges
+                  // (aka multiple rows in the solved_challenges table)
+                  JsonObject userJson = response.getJsonObject(userId);
+                  if (user.getInteger("solved_challenge_id") != null) {
+                    userJson.put("challenges", userJson.getString("challenges") + ", " + user.getInteger("solved_challenge_id"));
+                  }
+                }
               }
+              // Send response
               Response.sendJsonResponse(routingContext, 200, response);
             });
         }
