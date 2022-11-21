@@ -256,7 +256,8 @@ public class HoneypotService {
                     if (solvedChallenges.size() != 0) {
                       Response.sendFailure(routingContext, 400, "challenge already solved");
                     } else {
-                      pool.preparedQuery("INSERT INTO solved_challenges (user_id, solved_challenge_id) VALUES (?, ?)")
+                      // Add userid, challengeid and timestamp to solved_challenges table
+                      pool.preparedQuery("INSERT INTO solved_challenges (user_id, solved_challenge_id, solved_at) VALUES (?, ?, NOW())")
                         .execute(Tuple.of(id, challengeId))
                         .onSuccess(res -> Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "challenge solved")));
                     }
