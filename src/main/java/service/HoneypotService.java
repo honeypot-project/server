@@ -31,7 +31,7 @@ public class HoneypotService {
   private static final String LOGIN_SUCCESSFUL = "login successful";
   private static final String SQL_SELECT_USER_BY_ID = "SELECT * FROM users WHERE id = ?";
   private static final String SQL_SELECT_ALL_USERS_JOIN_SOLVED_CHALLENGES = "SELECT users.id, users.username, users.disabled, users.administrator, sc.solved_challenge_id" +
-    " FROM users JOIN solved_challenges sc on users.id = sc.user_id";
+    " FROM users LEFT JOIN solved_challenges sc on users.id = sc.user_id";
   private static final String SQL_ORDER_BY_CHALLENGE_ID = " ORDER BY solved_challenge_id";
   private static final String SQL_WHERE_LAST_ACTION_IN_30_MINUTES = " WHERE users.last_action > NOW() - INTERVAL 30 MINUTE";
 
