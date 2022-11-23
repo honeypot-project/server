@@ -82,6 +82,8 @@ public class HoneypotService {
                   // Check if the user has solved any challenges
                   if (user.getInteger("solved_challenge_id") != null) {
                     userJson.put("challenges", "Solved: " + user.getInteger("solved_challenge_id"));
+                  } else {
+                    userJson.put("challenges", "Solved: None");
                   }
                 } else {
                   // This will only run if the user has solved multiple challenges
