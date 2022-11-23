@@ -72,4 +72,11 @@ public class ApiBridge {
   public static void getUser(RoutingContext routingContext) {
     service.getUser(routingContext, pool);
   }
+
+  public static void makeAdmin(RoutingContext routingContext) {
+    Request request = Request.from(routingContext);
+    String userId = request.getUserId();
+
+    service.makeAdmin(routingContext, pool, userId);
+  }
 }

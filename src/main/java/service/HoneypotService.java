@@ -489,4 +489,57 @@ public class HoneypotService {
       new File(file.uploadedFileName()).delete();
     }
   }
+
+  public void makeAdmin(RoutingContext routingContext, MySQLPool pool, String userId) {
+    // Check if user is logged in
+    String loggedInUserId = routingContext.session().get("id");
+
+    if (loggedInUserId == null) {
+      Response.sendFailure(routingContext, 401, NOT_LOGGED_IN_ERROR);
+      return;
+    }
+
+    // Validate user
+    pool.preparedQuery(SQL_SELECT_USER_BY_ID)
+      .execute(Tuple.of(loggedInUserId))
+      .onSuccess(userDetails -> {
+        if (userDetails.size() == 0) {
+
+          Response.sendFailure(routingContext, 404, USER_NOT_FOUND_ERROR);
+
+        } else if (userDetails.iterator().next().getBoolean("disabled")) {
+
+          Response.sendFailure(routingContext, 403, USER_DISABLED_ERROR);
+
+        } else if (!userDetails.iterator().next().getBoolean("administrator")) {
+
+          Response.sendFailure(routingContext, 403, USER_NOT_ADMIN_ERROR);
+
+        } else {
+          // Validate user to be made admin
+          pool.preparedQuery(SQL_SELECT_USER_BY_ID)
+            .execute(Tuple.of(userId))
+            .onSuccess(userDetailsToMakeAdmin -> {
+              if (userDetailsToMakeAdmin.size() == 0) {
+
+                Response.sendFailure(routingContext, 404, USER_NOT_FOUND_ERROR);
+
+              } else if (userDetailsToMakeAdmin.iterator().next().getBoolean("disabled")) {
+
+                Response.sendFailure(routingContext, 403, USER_DISABLED_ERROR);
+
+              } else if (userDetailsToMakeAdmin.iterator().next().getBoolean("administrator")) {
+
+                Response.sendFailure(routingContext, 400, "User is already an admin");
+
+              } else {
+                // Make user admin
+                pool.preparedQuery("UPDATE users SET administrator = 1 WHERE id = ?")
+                  .execute(Tuple.of(userId))
+                  .onSuccess(res -> Response.sendJsonResponse(routingContext, 200, new JsonObject().put("ok", "user is now an admin")));
+              }
+            }).onFailure(err -> Response.sendFailure(routingContext, 500, err.getMessage()));
+        }
+      }).onFailure(err -> Response.sendFailure(routingContext, 500, err.getMessage()));
+  }
 }
