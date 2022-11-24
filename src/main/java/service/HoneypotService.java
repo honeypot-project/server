@@ -349,11 +349,14 @@ public class HoneypotService {
           pool.query(SQL_SELECT_ALL_USERS_JOIN_SOLVED_CHALLENGES + SQL_WHERE_LAST_ACTION_IN_30_MINUTES + SQL_ORDER_BY_CHALLENGE_ID)
             .execute()
             .onSuccess(users -> {
+              System.out.println("executing");
               // Create a json object for each user
               JsonObject response = new JsonObject();
               for (Row user : users) {
+                System.out.println("wtf");
                 String userId = user.getInteger("id").toString();
                 if (!response.containsKey(userId)) {
+                  System.out.println("Adding user" + userId);
                   response.put(userId, new JsonObject());
                   JsonObject userJson = response.getJsonObject(userId);
                   userJson.put("id", userId);
@@ -361,6 +364,7 @@ public class HoneypotService {
                   userJson.put("disabled", user.getBoolean("disabled"));
                   userJson.put("admin", user.getBoolean("administrator"));
                   // Check if the user has solved any challenges
+                  System.out.println(user.getInteger("solved_challenge_id"));
                   if (user.getInteger("solved_challenge_id") != null) {
                     userJson.put("challenges", "Solved: " + user.getInteger("solved_challenge_id"));
                   } else {
@@ -450,6 +454,13 @@ public class HoneypotService {
           // Check if file is an image
           if (!file.contentType().startsWith("image/")) {
             Response.sendFailure(routingContext, 400, "File is not an image");
+            deleteFiles(files);
+            return;
+          }
+
+          // Filter for svg files
+          if (file.contentType().equals("image/svg+xml")) {
+            Response.sendFailure(routingContext, 400, "SVG files are not allowed");
             deleteFiles(files);
             return;
           }
