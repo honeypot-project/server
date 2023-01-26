@@ -19,7 +19,7 @@ Administrators can:
 
 == Before running
 
-Please change the username and password in the `src/main/resources/sql.properties` file before running
+Please change the username and password in the `src/main/resources/config/sql.properties` file before running
 The default database will be created automatically if it doesn't exist.
 
 
