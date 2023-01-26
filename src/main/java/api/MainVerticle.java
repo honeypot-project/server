@@ -1,5 +1,6 @@
 package api;
 
+import data.HoneypotDataRepoMySQLImpl;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpMethod;
@@ -30,8 +31,8 @@ public class MainVerticle extends AbstractVerticle {
         .setPort(3306)
         .setHost("localhost")
         .setDatabase("honeypot")
-        .setUser("honeypot")
-        .setPassword("EdefvRAnpCYroX8pnt"),
+        .setUser("root")
+        .setPassword("123"),
       new PoolOptions().setMaxSize(5));
 
     // Create a router object.
