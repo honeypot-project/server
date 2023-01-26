@@ -2,6 +2,7 @@ package data;
 
 import domain.Challenge;
 import domain.HoneypotUser;
+import util.DatabaseConfig;
 import util.HoneypotException;
 
 import java.sql.Connection;
@@ -9,10 +10,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class HoneypotDataRepoMySQLImpl implements HoneypotDataRepo {
   @Override
@@ -23,12 +21,12 @@ public class HoneypotDataRepoMySQLImpl implements HoneypotDataRepo {
       throw new HoneypotException("Unable to create database");
     }
     try (Connection conn = MySQLConnection.getConnection();
-         PreparedStatement stmt = conn.prepareStatement("CREATE TABLE IF NOT EXISTS honeypot.users (" +
+         PreparedStatement stmt = conn.prepareStatement("CREATE TABLE IF NOT EXISTS " + DatabaseConfig.get("db.database") + ".users (" +
            "id INT NOT NULL AUTO_INCREMENT," +
            "username VARCHAR(255) NOT NULL," +
            "password VARCHAR(500) NOT NULL," +
-           "disabled BOOLEAN NOT NULL," +
-           "administrator BOOLEAN NOT NULL," +
+           "disabled BOOLEAN default false," +
+           "administrator BOOLEAN default false," +
            "last_action datetime null," +
            "img_id VARCHAR(500) null ," +
            "PRIMARY KEY (id)," +
@@ -39,8 +37,8 @@ public class HoneypotDataRepoMySQLImpl implements HoneypotDataRepo {
       throw new HoneypotException("Unable to create users table");
     }
     try (Connection conn = MySQLConnection.getConnection();
-         PreparedStatement stmt = conn.prepareStatement("CREATE TABLE IF NOT EXISTS honeypot.challenges (" +
-           "challenge_id INT NOT NULL AUTO_INCREMENT," +
+         PreparedStatement stmt = conn.prepareStatement("CREATE TABLE IF NOT EXISTS " + DatabaseConfig.get("db.database") + ".challenges (" +
+           "challenge_id INT NOT NULL," +
            "flag VARCHAR(255) NOT NULL," +
            "PRIMARY KEY (challenge_id)," +
            "UNIQUE (flag)" +
@@ -51,7 +49,7 @@ public class HoneypotDataRepoMySQLImpl implements HoneypotDataRepo {
     }
 
     try (Connection conn = MySQLConnection.getConnection();
-         PreparedStatement stmt = conn.prepareStatement("CREATE TABLE IF NOT EXISTS honeypot.solved_challenges (" +
+         PreparedStatement stmt = conn.prepareStatement("CREATE TABLE IF NOT EXISTS " + DatabaseConfig.get("db.database") + ".solved_challenges (" +
            "user_id INT NOT NULL," +
            "solved_challenge_id INT NOT NULL," +
            "PRIMARY KEY (user_id, solved_challenge_id)," +
@@ -64,26 +62,33 @@ public class HoneypotDataRepoMySQLImpl implements HoneypotDataRepo {
     }
 
     try (Connection conn = MySQLConnection.getConnection();
-         PreparedStatement stmt = conn.prepareStatement("select * from honeypot.challenges")
+         PreparedStatement stmt = conn.prepareStatement("select * from " + DatabaseConfig.get("db.database") + ".challenges")
     ) {
       ResultSet resultSet = stmt.executeQuery();
       if (!resultSet.next()) {
-        try (Connection conn2 = MySQLConnection.getConnection();
-             PreparedStatement stmt2 = conn2.prepareStatement("INSERT INTO honeypot.challenges (challenge_id, flag) \n" +
-               "VALUES (1, 'FLAG{XSS-IS-EASY-PEASY-LEMON-SQUEEZY}'),\n" +
-               "(2, 'FLAG{INSECURE-COOKI3-VULNERABILITY}'),\n" +
-               "(3, 'FLAG{DEFAULT-CREDENTIALS-ARE-A-NO-GO}'),\n" +
-               "(4, 'FLAG{YOU-ARE-A-BEAST-GOOD-JOB-NERD}'),\n" +
-               "(5, 'FLAG{YOU-FOUND-ME-WELL-DONE}');")) {
-          stmt2.execute();
-        } catch (SQLException e) {
-          throw new HoneypotException("Unable to insert data");
-        }
+        insertFlag(1, "FLAG{XSS-IS-EASY-PEASY-LEMON-SQEEZY}");
+        insertFlag(2, "FLAG{INSECURE-COOKI3-VULNERABILITY}");
+        insertFlag(3, "FLAG{DEFAULT-CREDENTIALS-ARE-A-NO-GO}");
+        insertFlag(4, "FLAG{YOU-ARE-A-BEAST-GOOD-JOB-NERD}");
+        insertFlag(5, "FLAG{YOU-FOUND-ME-WELL-DONE}");
       }
 
 
     } catch (SQLException ex) {
       throw new HoneypotException("Couldn't get existing values of table challenges");
+    }
+  }
+
+  private void insertFlag(int id, String flag) {
+    try (Connection conn2 = MySQLConnection.getConnection();
+         PreparedStatement stmt2 = conn2.prepareStatement("INSERT INTO " + DatabaseConfig.get("db.database") + ".challenges (challenge_id, flag)" +
+           "VALUES (?, ?);")
+    ) {
+      stmt2.setInt(1, id);
+      stmt2.setString(2, flag);
+      stmt2.execute();
+    } catch (SQLException e) {
+      throw new HoneypotException("Unable to insert data");
     }
   }
 
@@ -219,6 +224,7 @@ public class HoneypotDataRepoMySQLImpl implements HoneypotDataRepo {
         }
       }
 
+      allChallenges.sort(Comparator.comparingInt(Challenge::getId));
       return allChallenges;
 
     } catch (SQLException e) {
