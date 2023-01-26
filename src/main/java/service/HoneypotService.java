@@ -1,17 +1,12 @@
 package service;
 
-import api.Response;
 import com.password4j.Hash;
 import com.password4j.Password;
 import data.HoneypotDataRepo;
 import data.Repos;
 import domain.Challenge;
 import domain.HoneypotUser;
-import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.FileUpload;
-import io.vertx.ext.web.RoutingContext;
-import io.vertx.sqlclient.Tuple;
-import util.HoneypotErrors;
 
 import java.io.File;
 import java.io.IOException;
@@ -34,17 +29,21 @@ public class HoneypotService {
   public HoneypotUser register(String username, String password) {
     // Check if parameters are valid
     if (!parametersAreValid(username, password)) return null;
+    System.out.println("Parameters are valid");
 
     // Check if user already exists
-    if (!userExists(username)) return null;
+    if (userExists(username)) return null;
+    System.out.println("User does not exist");
 
     // Lowercase username
     final String validatedUsername = username.toLowerCase();
 
     // Hash password
     Hash hash = Password.hash(password).addRandomSalt().withArgon2();
+    System.out.println("Password hashed");
 
     // Create user
+    System.out.println("Creating user");
     return new HoneypotUser(-1, validatedUsername, hash.toString(), false, false, null, null);
 
   }
@@ -91,7 +90,7 @@ public class HoneypotService {
     return user != null;
   }
 
-  public void uploadImg(String userId, List<FileUpload> files) {
+  public void uploadImg(int userId, List<FileUpload> files) {
 
     // Get file
     FileUpload file = files.get(0);
@@ -137,7 +136,23 @@ public class HoneypotService {
     }
   }
 
-  public List<Challenge> getChallenges() {
-    return repo.getChallenges();
+  public List<Challenge> getChallenges(int userId) {
+    return repo.getSolvedChallenges(userId);
+  }
+
+  public boolean submitChallenge(int userId, String challengeId, String flag) {
+    return repo.submitChallenge(userId, challengeId, flag);
+  }
+
+  public void toggleUser(String userToBeToggled) {
+    repo.toggleUser(userToBeToggled);
+  }
+
+  public List<HoneypotUser> getOnlineUsers() {
+    return repo.getOnlineUsers();
+  }
+
+  public void updateAdminRights(String userToMakeAdmin) {
+    repo.updateAdminRights(userToMakeAdmin);
   }
 }

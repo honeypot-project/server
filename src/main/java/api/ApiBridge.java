@@ -1,6 +1,7 @@
 package api;
 
 import data.HoneypotDataRepo;
+import domain.Challenge;
 import domain.HoneypotUser;
 import data.Repos;
 import io.vertx.core.json.JsonObject;
@@ -31,6 +32,7 @@ public class ApiBridge {
       return;
     }
     repo.addUser(user);
+    Response.sendOkResponse(routingContext);
   }
 
   public static void uploadImg(RoutingContext routingContext) {
@@ -43,9 +45,9 @@ public class ApiBridge {
 
     // Check if picture was submitted
     List<FileUpload> files = routingContext.fileUploads();
-    String userID = routingContext.session().get("id");
-    service.uploadImg(userID, files);
-    Response.sendJsonResponse(routingContext, 200, new JsonObject().put("message", "ok"));
+    int userId = routingContext.session().get("id");
+    service.uploadImg(userId, files);
+    Response.sendOkResponse(routingContext);
   }
 
   public static void getUsers(RoutingContext routingContext) {
@@ -67,47 +69,74 @@ public class ApiBridge {
       return;
     }
     routingContext.session().put("id", user.getId());
-    Response.sendJsonResponse(routingContext, 200, new JsonObject().put("message", "ok"));
+    Response.sendOkResponse(routingContext);
   }
 
   public static void getChallenges(RoutingContext routingContext) {
-    service.getChallenges();
+    if (!isUserLoggedIn(routingContext)) return;
+
+    int userId = routingContext.session().get("id");
+    List<Challenge> solvedChallenges = service.getChallenges(userId);
+    Response.sendJsonResponse(routingContext, 200, solvedChallenges);
   }
 
   public static void submitChallenge(RoutingContext routingContext) {
+    if (!isUserLoggedIn(routingContext)) return;
+    if (!isUserDisabled(routingContext)) return;
+
     Request request = Request.from(routingContext);
     String challengeId = request.getChallengeId();
     String flag = request.getFlag();
+    int userId = routingContext.session().get("id");
 
-    service.submitChallenge(routingContext, pool, challengeId, flag);
+    boolean success = service.submitChallenge(userId, challengeId, flag);
+    if (!success) {
+      Response.sendFailure(routingContext, 400, HoneypotErrors.SUBMIT_FAILED_ERROR);
+    } else {
+      Response.sendOkResponse(routingContext);
+    }
   }
 
   public static void toggleUser(RoutingContext routingContext) {
-    Request request = Request.from(routingContext);
-    String userId = request.getUserId();
+    if (!isUserLoggedIn(routingContext)) return;
+    if (!isUserAdmin(routingContext)) return;
+    if (!isUserDisabled(routingContext)) return;
 
-    service.toggleUser(routingContext, pool, userId);
+    Request request = Request.from(routingContext);
+    String userToBeToggled = request.getUserId();
+
+    service.toggleUser(userToBeToggled);
   }
 
   public static void getOnlineUsers(RoutingContext routingContext) {
-    service.getOnlineUsers(routingContext, pool);
+    if (!isUserLoggedIn(routingContext)) return;
+    if (!isUserAdmin(routingContext)) return;
+    if (!isUserDisabled(routingContext)) return;
+
+    List<HoneypotUser> onlineUsers = service.getOnlineUsers();
+    Response.sendJsonResponse(routingContext, 200, onlineUsers);
   }
 
   public static void getUser(RoutingContext routingContext) {
-    String userId = routingContext.session().get("id");
+    int userId = routingContext.session().get("id");
     HoneypotUser user = repo.getUser(userId);
     Response.sendJsonResponse(routingContext, 200, user);
   }
 
-  public static void makeAdmin(RoutingContext routingContext) {
-    Request request = Request.from(routingContext);
-    String userId = request.getUserId();
+  public static void updateAdminRights(RoutingContext routingContext) {
+    if (!isUserLoggedIn(routingContext)) return;
+    if (!isUserAdmin(routingContext)) return;
+    if (!isUserDisabled(routingContext)) return;
 
-    service.makeAdmin(routingContext, pool, userId);
+    Request request = Request.from(routingContext);
+    String userToMakeAdmin = request.getUserId();
+
+    service.updateAdminRights(userToMakeAdmin);
+    Response.sendOkResponse(routingContext);
   }
 
   private static boolean isUserAdmin(RoutingContext routingContext) {
-    String userId = routingContext.session().get("id");
+    int userId = routingContext.session().get("id");
     if (!repo.isUserAdmin(userId)) {
       Response.sendFailure(routingContext, 403, "You are not an admin");
       return false;
@@ -124,7 +153,7 @@ public class ApiBridge {
   }
 
   private static boolean isUserDisabled(RoutingContext routingContext) {
-    String userId = routingContext.session().get("id");
+    int userId = routingContext.session().get("id");
     if (repo.getUser(userId).isDisabled()) {
       Response.sendFailure(routingContext, 403, "Your account has been disabled");
       return false;

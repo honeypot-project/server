@@ -1,23 +1,23 @@
 package data;
 
+import domain.Challenge;
 import domain.HoneypotUser;
-import io.vertx.core.json.JsonObject;
 
 import java.util.List;
 
 public interface HoneypotDataRepo {
-  HoneypotUser getUser(String userId);
+  HoneypotUser getUser(int userId);
   List<HoneypotUser> getUsers();
   void addUser(HoneypotUser user);
   HoneypotUser login(String username, String password);
-  JsonObject getChallenges();
-  boolean submitChallenge(String username, String challengeId, String flag);
-  void updateLastAction(String userId);
+  List<Challenge> getSolvedChallenges(int userId);
+  boolean submitChallenge(int userId, String challengeId, String flag);
+  void updateLastAction(int userId);
   void toggleUser(String username);
   List<HoneypotUser> getOnlineUsers();
-  boolean uploadImg(String userId, String imgId);
-  boolean makeAdmin(String username);
-  boolean isUserAdmin(String userId);
+  boolean uploadImg(int userId, String imgId);
+  boolean updateAdminRights(String username);
+  boolean isUserAdmin(int userId);
 
   HoneypotUser getUserByUsername(String username);
 }

@@ -1,6 +1,5 @@
 package api;
 
-import data.HoneypotDataRepoMySQLImpl;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpMethod;
@@ -61,7 +60,7 @@ public class MainVerticle extends AbstractVerticle {
     router.get("/online").handler(ApiBridge::getOnlineUsers);
     // This toggles the users' status (disabled/enabled)
     router.get("/toggleUser").handler(ApiBridge::toggleUser);
-    router.get("/admin").handler(ApiBridge::makeAdmin);
+    router.get("/admin").handler(ApiBridge::updateAdminRights);
 
     // Image upload function
     router.post("/upload").handler(BodyHandler.create()
