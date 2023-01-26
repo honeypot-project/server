@@ -196,10 +196,10 @@ try (Connection conn = MySQLConnection.getConnection();
   }
 
   @Override
-  public void toggleUser(String username) {
+  public void toggleUser(int userId) {
     try (Connection conn = MySQLConnection.getConnection();
-         PreparedStatement stmt = conn.prepareStatement("UPDATE users SET disabled = NOT disabled WHERE username = ?")) {
-      stmt.setString(1, username);
+         PreparedStatement stmt = conn.prepareStatement("UPDATE users SET disabled = NOT disabled WHERE id = ?")) {
+      stmt.setInt(1, userId);
       stmt.executeUpdate();
     } catch (SQLException e) {
       throw new HoneypotException("Unable to toggle user");
@@ -243,10 +243,10 @@ try (Connection conn = MySQLConnection.getConnection();
   }
 
   @Override
-  public boolean updateAdminRights(String username) {
+  public boolean updateAdminRights(int userId) {
     try (Connection conn = MySQLConnection.getConnection();
-         PreparedStatement stmt = conn.prepareStatement("UPDATE users SET administrator = NOT administrator WHERE username = ?")) {
-      stmt.setString(1, username);
+         PreparedStatement stmt = conn.prepareStatement("UPDATE users SET administrator = NOT administrator WHERE id = ?")) {
+      stmt.setInt(1, userId);
       stmt.executeUpdate();
       return true;
     } catch (SQLException e) {

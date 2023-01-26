@@ -65,7 +65,7 @@ public class Request {
     return body.asJsonObject().getString("flag");
   }
 
-  public String getUserId() {
-    return params.get("user");
+  public int getUserId() {
+    return Integer.parseInt(params.get("user"));
   }
 }
