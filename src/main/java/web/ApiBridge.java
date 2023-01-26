@@ -48,6 +48,7 @@ public class ApiBridge {
     int userId = routingContext.session().get("id");
     service.uploadImg(userId, files);
     Response.sendOkResponse(routingContext);
+    repo.updateLastAction(routingContext.session().get("id"));
   }
 
   public static void getUsers(RoutingContext routingContext) {
@@ -70,6 +71,7 @@ public class ApiBridge {
     }
     routingContext.session().put("id", user.getId());
     Response.sendOkResponse(routingContext);
+    repo.updateLastAction(routingContext.session().get("id"));
   }
 
   public static void getChallenges(RoutingContext routingContext) {
@@ -78,6 +80,7 @@ public class ApiBridge {
     int userId = routingContext.session().get("id");
     List<Challenge> solvedChallenges = service.getChallenges(userId);
     Response.sendJsonResponse(routingContext, 200, solvedChallenges);
+    repo.updateLastAction(routingContext.session().get("id"));
   }
 
   public static void submitChallenge(RoutingContext routingContext) {
@@ -95,6 +98,7 @@ public class ApiBridge {
     } else {
       Response.sendOkResponse(routingContext);
     }
+    repo.updateLastAction(routingContext.session().get("id"));
   }
 
   public static void toggleUser(RoutingContext routingContext) {
@@ -107,6 +111,7 @@ public class ApiBridge {
 
     service.toggleUser(userToBeToggled);
     Response.sendOkResponse(routingContext);
+    repo.updateLastAction(routingContext.session().get("id"));
   }
 
   public static void getOnlineUsers(RoutingContext routingContext) {
@@ -116,6 +121,7 @@ public class ApiBridge {
 
     List<HoneypotUser> onlineUsers = service.getOnlineUsers();
     Response.sendJsonResponse(routingContext, 200, onlineUsers);
+    repo.updateLastAction(routingContext.session().get("id"));
   }
 
   public static void getUser(RoutingContext routingContext) {
@@ -123,6 +129,7 @@ public class ApiBridge {
     int userId = routingContext.session().get("id");
     HoneypotUser user = repo.getUser(userId);
     Response.sendJsonResponse(routingContext, 200, user);
+    repo.updateLastAction(routingContext.session().get("id"));
   }
 
   public static void updateAdminRights(RoutingContext routingContext) {
@@ -135,8 +142,10 @@ public class ApiBridge {
 
     service.updateAdminRights(userToMakeAdmin);
     Response.sendOkResponse(routingContext);
+    repo.updateLastAction(routingContext.session().get("id"));
   }
 
+  // Helper methods
   private static boolean isUserAdmin(RoutingContext routingContext) {
     int userId = routingContext.session().get("id");
     if (!repo.isUserAdmin(userId)) {
