@@ -231,24 +231,15 @@ try (Connection conn = MySQLConnection.getConnection();
 
   @Override
   public List<HoneypotUser> getOnlineUsers() {
-    try (Connection conn = MySQLConnection.getConnection();
-         PreparedStatement stmt = conn.prepareStatement("SELECT * FROM users WHERE last_action > NOW() - INTERVAL 15 MINUTE")) {
-      List<HoneypotUser> users = new ArrayList<>();
-      ResultSet resultSet = stmt.executeQuery();
-      while (resultSet.next()) {
-        users.add(new HoneypotUser(
-          resultSet.getInt("id"),
-          resultSet.getString("username"),
-          null, // Don't send password to client
-          resultSet.getBoolean("disabled"),
-          resultSet.getBoolean("administrator"),
-          resultSet.getTimestamp("last_action").toLocalDateTime(),
-          resultSet.getString("img_id")));
+    // Get all users and then filter out the ones that are not online
+    List<HoneypotUser> allUsers = getUsers();
+    List<HoneypotUser> onlineUsers = new ArrayList<>();
+    allUsers.forEach(user -> {
+      if (user.getLastAction().isAfter(LocalDateTime.now().minusMinutes(15))) {
+        onlineUsers.add(user);
       }
-      return users;
-    } catch (SQLException e) {
-      throw new HoneypotException("Unable to get online users");
-    }
+    });
+    return onlineUsers;
   }
 
   @Override

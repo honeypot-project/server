@@ -7,7 +7,7 @@ plugins {
   id("com.github.johnrengelman.shadow") version "7.0.0"
 }
 
-group = "com.api"
+group = "honeypot"
 version = "1.0.0-SNAPSHOT"
 
 repositories {
@@ -17,7 +17,7 @@ repositories {
 val vertxVersion = "4.3.7"
 val junitJupiterVersion = "5.7.0"
 
-val mainVerticleName = "api.MainVerticle"
+val mainVerticleName = "web.MainVerticle"
 val launcherClassName = "io.vertx.core.Launcher"
 
 

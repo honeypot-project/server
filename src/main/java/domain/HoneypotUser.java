@@ -60,8 +60,13 @@ public class HoneypotUser {
   }
 
   @JsonGetter("last_action")
-  public String getLastAction() {
+  public String getLastActionAsString() {
     return lastAction.toString();
+  }
+
+  @JsonIgnore
+  public LocalDateTime getLastAction() {
+    return lastAction;
   }
 
   @JsonGetter("img_id")

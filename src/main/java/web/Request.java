@@ -1,4 +1,4 @@
-package api;
+package web;
 
 import io.vertx.core.MultiMap;
 import io.vertx.ext.web.RequestBody;

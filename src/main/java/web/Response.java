@@ -1,4 +1,4 @@
-package api;
+package web;
 
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.json.Json;

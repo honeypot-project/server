@@ -1,8 +1,21 @@
-= Vertxdocker
+= Honeypot service
+== Built with vert.x
 
-image:https://img.shields.io/badge/vert.x-4.3.4-purple.svg[link="https://vertx.io"]
+image:https://img.shields.io/badge/vert.x-4.3.7-red.svg[link="https://vertx.io"]
 
-This application was generated using http://start.vertx.io
+This application was originally a school project.
+Its goal is to manage users and allow them to submit flags to a CTF challenge.
+
+Users can:
+
+* Upload a picture
+* Submit flags
+
+Administrators can:
+
+* Disable/enable users
+* See their solved challenges
+* Make users admins
 
 == Building
 
