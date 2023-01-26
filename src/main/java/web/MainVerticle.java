@@ -1,15 +1,22 @@
 package web;
 
+import data.MySQLConnection;
+import data.Repos;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.web.Router;
-import io.vertx.ext.web.handler.*;
+import io.vertx.ext.web.handler.BodyHandler;
+import io.vertx.ext.web.handler.CorsHandler;
+import io.vertx.ext.web.handler.SessionHandler;
+import io.vertx.ext.web.handler.StaticHandler;
 import io.vertx.ext.web.sstore.SessionStore;
-import io.vertx.mysqlclient.MySQLConnectOptions;
-import io.vertx.mysqlclient.MySQLPool;
-import io.vertx.sqlclient.PoolOptions;
+import util.HoneypotException;
 
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.SQLSyntaxErrorException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -22,6 +29,18 @@ public class MainVerticle extends AbstractVerticle {
   @Override
   public void start(Promise<Void> startPromise) throws Exception {
     this.startPromise = startPromise;
+
+    // Test database connection and create startup tables
+    try (Connection connection = MySQLConnection.getConnection()) {
+      LOGGER.info("Database connection successful");
+    } catch (SQLException ex ) {
+      LOGGER.severe("Database connection couldn't be established");
+      if (ex instanceof SQLSyntaxErrorException) {
+        Repos.dataRepo.setup();
+      } else {
+        throw new SQLException(ex);
+      }
+    }
 
     // Create a router object.
     Router router = Router.router(vertx);

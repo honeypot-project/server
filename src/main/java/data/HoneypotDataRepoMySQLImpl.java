@@ -15,11 +15,81 @@ import java.util.List;
 import java.util.Map;
 
 public class HoneypotDataRepoMySQLImpl implements HoneypotDataRepo {
+  @Override
+  public void setup() {
+    try (Connection conn = MySQLConnection.getRootConnection()) {
+      conn.prepareStatement("CREATE DATABASE IF NOT EXISTS honeypot").execute();
+    } catch (SQLException e) {
+      throw new HoneypotException("Unable to create database");
+    }
+    try (Connection conn = MySQLConnection.getConnection();
+         PreparedStatement stmt = conn.prepareStatement("CREATE TABLE IF NOT EXISTS honeypot.users (" +
+           "id INT NOT NULL AUTO_INCREMENT," +
+           "username VARCHAR(255) NOT NULL," +
+           "password VARCHAR(500) NOT NULL," +
+           "disabled BOOLEAN NOT NULL," +
+           "administrator BOOLEAN NOT NULL," +
+           "last_action datetime null," +
+           "img_id VARCHAR(500) null ," +
+           "PRIMARY KEY (id)," +
+           "UNIQUE (username)" +
+           ")")) {
+      stmt.execute();
+    } catch (SQLException e) {
+      throw new HoneypotException("Unable to create users table");
+    }
+    try (Connection conn = MySQLConnection.getConnection();
+         PreparedStatement stmt = conn.prepareStatement("CREATE TABLE IF NOT EXISTS honeypot.challenges (" +
+           "challenge_id INT NOT NULL AUTO_INCREMENT," +
+           "flag VARCHAR(255) NOT NULL," +
+           "PRIMARY KEY (challenge_id)," +
+           "UNIQUE (flag)" +
+           ")")) {
+      stmt.execute();
+    } catch (SQLException e) {
+      throw new HoneypotException("Unable to create challenges table");
+    }
 
+    try (Connection conn = MySQLConnection.getConnection();
+         PreparedStatement stmt = conn.prepareStatement("CREATE TABLE IF NOT EXISTS honeypot.solved_challenges (" +
+           "user_id INT NOT NULL," +
+           "solved_challenge_id INT NOT NULL," +
+           "PRIMARY KEY (user_id, solved_challenge_id)," +
+           "FOREIGN KEY (user_id) REFERENCES users(id)," +
+           "FOREIGN KEY (solved_challenge_id) REFERENCES challenges(challenge_id)" +
+           ")")) {
+      stmt.execute();
+    } catch (SQLException e) {
+      throw new HoneypotException("Unable to create user_challenges table");
+    }
+
+    try (Connection conn = MySQLConnection.getConnection();
+         PreparedStatement stmt = conn.prepareStatement("select * from honeypot.challenges")
+    ) {
+      ResultSet resultSet = stmt.executeQuery();
+      if (!resultSet.next()) {
+        try (Connection conn2 = MySQLConnection.getConnection();
+             PreparedStatement stmt2 = conn2.prepareStatement("INSERT INTO honeypot.challenges (challenge_id, flag) \n" +
+               "VALUES (1, 'FLAG{XSS-IS-EASY-PEASY-LEMON-SQUEEZY}'),\n" +
+               "(2, 'FLAG{INSECURE-COOKI3-VULNERABILITY}'),\n" +
+               "(3, 'FLAG{DEFAULT-CREDENTIALS-ARE-A-NO-GO}'),\n" +
+               "(4, 'FLAG{YOU-ARE-A-BEAST-GOOD-JOB-NERD}'),\n" +
+               "(5, 'FLAG{YOU-FOUND-ME-WELL-DONE}');")) {
+          stmt2.execute();
+        } catch (SQLException e) {
+          throw new HoneypotException("Unable to insert data");
+        }
+      }
+
+
+    } catch (SQLException ex) {
+      throw new HoneypotException("Couldn't get existing values of table challenges");
+    }
+  }
 
   @Override
   public HoneypotUser getUserByUsername(String username) {
-try (Connection conn = MySQLConnection.getConnection();
+    try (Connection conn = MySQLConnection.getConnection();
          PreparedStatement stmt = conn.prepareStatement("SELECT * FROM users WHERE username = ?")) {
       stmt.setString(1, username);
       ResultSet resultSet = stmt.executeQuery();

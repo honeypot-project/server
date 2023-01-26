@@ -20,4 +20,6 @@ public interface HoneypotDataRepo {
   boolean isUserAdmin(int userId);
 
   HoneypotUser getUserByUsername(String username);
+
+  void setup();
 }
