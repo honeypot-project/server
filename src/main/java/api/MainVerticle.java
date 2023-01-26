@@ -17,7 +17,7 @@ import java.util.logging.Logger;
 public class MainVerticle extends AbstractVerticle {
   private static final Logger LOGGER = Logger.getLogger(MainVerticle.class.getName());
   private Promise<Void> startPromise;
-  private static final int KB = 1000;
+  private static final Long KB = 1000L;
 
   public static MySQLPool pool;
 
@@ -66,7 +66,8 @@ public class MainVerticle extends AbstractVerticle {
     router.post("/upload").handler(BodyHandler.create()
         .setUploadsDirectory("temp-uploads")
         .setHandleFileUploads(true)
-        .setBodyLimit(10000 * KB))
+        .setBodyLimit(10000L * KB))
+      .failureHandler(ApiBridge::uploadImgFailure)
       .handler(ApiBridge::uploadImg);
     router.route("/uploads/images/*").handler(
       StaticHandler.create("uploads/images/").setCachingEnabled(true)

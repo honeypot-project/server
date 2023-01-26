@@ -13,10 +13,10 @@ public interface HoneypotDataRepo {
   List<Challenge> getSolvedChallenges(int userId);
   boolean submitChallenge(int userId, String challengeId, String flag);
   void updateLastAction(int userId);
-  void toggleUser(String username);
+  void toggleUser(int userId);
   List<HoneypotUser> getOnlineUsers();
   boolean uploadImg(int userId, String imgId);
-  boolean updateAdminRights(String username);
+  boolean updateAdminRights(int userId);
   boolean isUserAdmin(int userId);
 
   HoneypotUser getUserByUsername(String username);

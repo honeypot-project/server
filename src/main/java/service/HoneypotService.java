@@ -29,22 +29,18 @@ public class HoneypotService {
   public HoneypotUser register(String username, String password) {
     // Check if parameters are valid
     if (!parametersAreValid(username, password)) return null;
-    System.out.println("Parameters are valid");
 
     // Check if user already exists
     if (userExists(username)) return null;
-    System.out.println("User does not exist");
 
     // Lowercase username
     final String validatedUsername = username.toLowerCase();
 
     // Hash password
     Hash hash = Password.hash(password).addRandomSalt().withArgon2();
-    System.out.println("Password hashed");
 
     // Create user
-    System.out.println("Creating user");
-    return new HoneypotUser(-1, validatedUsername, hash.toString(), false, false, null, null);
+    return new HoneypotUser(-1, validatedUsername, hash.getResult(), false, false, null, null);
 
   }
 
@@ -95,7 +91,6 @@ public class HoneypotService {
     // Get file
     FileUpload file = files.get(0);
 
-
     // Get file extension
     String extension = file.fileName().substring(file.fileName().lastIndexOf(".") + 1);
 
@@ -144,7 +139,7 @@ public class HoneypotService {
     return repo.submitChallenge(userId, challengeId, flag);
   }
 
-  public void toggleUser(String userToBeToggled) {
+  public void toggleUser(int userToBeToggled) {
     repo.toggleUser(userToBeToggled);
   }
 
@@ -152,7 +147,7 @@ public class HoneypotService {
     return repo.getOnlineUsers();
   }
 
-  public void updateAdminRights(String userToMakeAdmin) {
+  public void updateAdminRights(int userToMakeAdmin) {
     repo.updateAdminRights(userToMakeAdmin);
   }
 }

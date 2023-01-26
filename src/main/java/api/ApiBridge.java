@@ -41,7 +41,7 @@ public class ApiBridge {
     if (!isUserDisabled(routingContext)) return;
     if (!onlyOneFileSubmitted(routingContext)) return;
     if (!isFileImage(routingContext)) return;
-    if (!imageIsSVG(routingContext)) return;
+    if (imageIsSVG(routingContext)) return;
 
     // Check if picture was submitted
     List<FileUpload> files = routingContext.fileUploads();
@@ -103,9 +103,10 @@ public class ApiBridge {
     if (!isUserDisabled(routingContext)) return;
 
     Request request = Request.from(routingContext);
-    String userToBeToggled = request.getUserId();
+    int userToBeToggled = request.getUserId();
 
     service.toggleUser(userToBeToggled);
+    Response.sendOkResponse(routingContext);
   }
 
   public static void getOnlineUsers(RoutingContext routingContext) {
@@ -118,6 +119,7 @@ public class ApiBridge {
   }
 
   public static void getUser(RoutingContext routingContext) {
+    if (!isUserLoggedIn(routingContext)) return;
     int userId = routingContext.session().get("id");
     HoneypotUser user = repo.getUser(userId);
     Response.sendJsonResponse(routingContext, 200, user);
@@ -129,7 +131,7 @@ public class ApiBridge {
     if (!isUserDisabled(routingContext)) return;
 
     Request request = Request.from(routingContext);
-    String userToMakeAdmin = request.getUserId();
+    int userToMakeAdmin = request.getUserId();
 
     service.updateAdminRights(userToMakeAdmin);
     Response.sendOkResponse(routingContext);
@@ -193,4 +195,7 @@ public class ApiBridge {
   }
 
 
+  public static void uploadImgFailure(RoutingContext routingContext) {
+    Response.sendFailure(routingContext, 413, HoneypotErrors.UPLOAD_IMG_TOO_BIG);
+  }
 }

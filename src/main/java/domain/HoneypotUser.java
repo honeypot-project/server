@@ -1,5 +1,7 @@
 package domain;
 
+import com.fasterxml.jackson.annotation.*;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import io.vertx.core.json.JsonArray;
 
 import java.time.LocalDateTime;
@@ -52,14 +54,16 @@ public class HoneypotUser {
     return disabled;
   }
 
-  public boolean isAdministrator() {
+  public boolean isAdmin() {
     return administrator;
   }
 
+  @JsonGetter("last_action")
   public String getLastAction() {
     return lastAction.toString();
   }
 
+  @JsonGetter("img_id")
   public String getImgId() {
     return imgId;
   }
