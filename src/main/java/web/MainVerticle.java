@@ -19,20 +19,9 @@ public class MainVerticle extends AbstractVerticle {
   private Promise<Void> startPromise;
   private static final Long KB = 1000L;
 
-  public static MySQLPool pool;
-
   @Override
   public void start(Promise<Void> startPromise) throws Exception {
     this.startPromise = startPromise;
-
-    // Create a mysql client
-    pool = MySQLPool.pool(vertx, new MySQLConnectOptions()
-        .setPort(3306)
-        .setHost("localhost")
-        .setDatabase("honeypot")
-        .setUser("root")
-        .setPassword("123"),
-      new PoolOptions().setMaxSize(5));
 
     // Create a router object.
     Router router = Router.router(vertx);
