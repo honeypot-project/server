@@ -46,6 +46,7 @@ public class HoneypotUser {
     return username;
   }
 
+  @JsonIgnore
   public String getPassword() {
     return password;
   }
@@ -68,12 +69,9 @@ public class HoneypotUser {
     return imgId;
   }
 
-  public JsonArray getChallenges() {
-    JsonArray challenges = new JsonArray();
-    for (Challenge challenge : solvedChallenges) {
-      challenges.add(challenge.getId());
-    }
-    return challenges;
+  @JsonGetter("challenges")
+  public List<Challenge> getSolvedChallenges() {
+    return solvedChallenges;
   }
 
   @Override

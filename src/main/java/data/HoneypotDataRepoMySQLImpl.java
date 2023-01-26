@@ -53,7 +53,7 @@ try (Connection conn = MySQLConnection.getConnection();
         return new HoneypotUser(
           resultSet.getInt("id"),
           resultSet.getString("username"),
-          null, // Don't send password to client
+          resultSet.getString("password"),
           resultSet.getBoolean("disabled"),
           resultSet.getBoolean("administrator"),
           resultSet.getTimestamp("last_action").toLocalDateTime(),
@@ -68,32 +68,24 @@ try (Connection conn = MySQLConnection.getConnection();
   @Override
   public List<HoneypotUser> getUsers() {
     try (Connection conn = MySQLConnection.getConnection();
-         PreparedStatement stmt = conn.prepareStatement("SELECT * FROM users LEFT JOIN solved_challenges sc on users.id = sc.user_id ORDER BY solved_challenge_id")) {
+         PreparedStatement stmt = conn.prepareStatement("select * from users")) {
       Map<Integer, HoneypotUser> users = new HashMap<>();
       ResultSet resultSet = stmt.executeQuery();
       while (resultSet.next()) {
-        // Check first if user is already in HashMap and if so, add the challengeId
-        if (users.containsKey(resultSet.getInt("id"))) {
-          HoneypotUser user = users.get(resultSet.getInt("id"));
-          user.addChallenge(resultSet.getInt("solved_challenge_id"));
-        } else {
-          HoneypotUser userToBeAdded = new HoneypotUser(
-            resultSet.getInt("id"),
-            resultSet.getString("username"),
-            null, // Don't send password to client
-            resultSet.getBoolean("disabled"),
-            resultSet.getBoolean("administrator"),
-            resultSet.getTimestamp("last_action").toLocalDateTime(),
-            resultSet.getString("img_id"));
-
-          userToBeAdded.addChallenge(resultSet.getInt("solved_challenge_id"));
-
-          users.put(
-            resultSet.getInt("id"),
-            userToBeAdded
-          );
-
+        LocalDateTime lastAction = null;
+        if (resultSet.getTimestamp("last_action") != null) {
+          lastAction = resultSet.getTimestamp("last_action").toLocalDateTime();
         }
+        List<Challenge> solvedChallenges = getSolvedChallenges(resultSet.getInt("id"));
+        users.put(resultSet.getInt("id"), new HoneypotUser(
+          resultSet.getInt("id"),
+          resultSet.getString("username"),
+          resultSet.getString("password"),
+          resultSet.getBoolean("disabled"),
+          resultSet.getBoolean("administrator"),
+          lastAction,
+          resultSet.getString("img_id"),
+          solvedChallenges));
       }
       // Convert HashMap to List
       List<HoneypotUser> usersList = new ArrayList<>();
@@ -129,7 +121,7 @@ try (Connection conn = MySQLConnection.getConnection();
         return new HoneypotUser(
           resultSet.getInt("id"),
           resultSet.getString("username"),
-          null, // Don't send password to client
+          resultSet.getString("password"),
           resultSet.getBoolean("disabled"),
           resultSet.getBoolean("administrator"),
           resultSet.getTimestamp("last_action").toLocalDateTime(),
@@ -146,12 +138,37 @@ try (Connection conn = MySQLConnection.getConnection();
     try (Connection conn = MySQLConnection.getConnection();
          PreparedStatement stmt = conn.prepareStatement("SELECT * FROM solved_challenges WHERE user_id = ?")) {
       stmt.setInt(1, userId);
-      List<Challenge> challenges = new ArrayList<>();
-      ResultSet resultSet = stmt.executeQuery();
-      while (resultSet.next()) {
-        challenges.add(new Challenge(resultSet.getInt("solved_challenge_id")));
+      ResultSet solvedChallengesSet = stmt.executeQuery();
+      List<Challenge> allChallenges = getAllChallenges();
+
+      while (solvedChallengesSet.next()) {
+        for (Challenge challenge : allChallenges) {
+          if (challenge.getId() == solvedChallengesSet.getInt("solved_challenge_id")) {
+            challenge.setSolved(true);
+          }
+        }
       }
+
+      return allChallenges;
+
+    } catch (SQLException e) {
+      throw new HoneypotException("Unable to get challenges");
+    }
+  }
+
+  private List<Challenge> getAllChallenges() {
+    try (Connection conn = MySQLConnection.getConnection();
+         PreparedStatement stmt = conn.prepareStatement("SELECT * FROM challenges")) {
+      ResultSet resultSet = stmt.executeQuery();
+
+      List<Challenge> challenges = new ArrayList<>();
+
+      while (resultSet.next()) {
+        challenges.add(new Challenge(resultSet.getInt("challenge_id")));
+      }
+
       return challenges;
+
     } catch (SQLException e) {
       throw new HoneypotException("Unable to get challenges");
     }
@@ -160,19 +177,24 @@ try (Connection conn = MySQLConnection.getConnection();
   @Override
   public boolean submitChallenge(int userId, String challengeId, String flag) {
     try (Connection conn = MySQLConnection.getConnection();
-         PreparedStatement stmt = conn.prepareStatement("SELECT * FROM challenges WHERE id = ?")) {
+         PreparedStatement stmt = conn.prepareStatement("SELECT * FROM challenges WHERE challenge_id = ?")) {
       stmt.setString(1, challengeId);
       ResultSet resultSet = stmt.executeQuery();
+
+      List<Challenge> solvedChallenges = getSolvedChallenges(userId);
+
+      for (Challenge challenge : solvedChallenges) {
+        if (challenge.getId() == Integer.parseInt(challengeId)) {
+          return false;
+        }
+      }
+
       if (resultSet.next()) {
         if (resultSet.getString("flag").equals(flag)) {
-          // Flag is correct, add challenge to user
-          try (Connection conn2 = MySQLConnection.getConnection();
-               PreparedStatement stmt2 = conn2.prepareStatement("INSERT INTO solved_challenges (user_id, solved_challenge_id) VALUES (?, ?)")) {
+          try (PreparedStatement stmt2 = conn.prepareStatement("INSERT INTO solved_challenges (user_id, solved_challenge_id) VALUES (?, ?)")) {
             stmt2.setInt(1, userId);
             stmt2.setString(2, challengeId);
             stmt2.executeUpdate();
-          } catch (SQLException e) {
-            throw new HoneypotException("Unable to add challenge to user");
           }
           return true;
         }

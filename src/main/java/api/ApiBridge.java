@@ -91,7 +91,7 @@ public class ApiBridge {
 
     boolean success = service.submitChallenge(userId, challengeId, flag);
     if (!success) {
-      Response.sendFailure(routingContext, 400, HoneypotErrors.SUBMIT_FAILED_ERROR);
+      Response.sendFailure(routingContext, 404, HoneypotErrors.SUBMIT_FAILED_ERROR);
     } else {
       Response.sendOkResponse(routingContext);
     }

@@ -2,34 +2,27 @@ package domain;
 
 public class Challenge {
 
-  private String status;
-
   private int id;
-  private String flag;
+  private boolean solved;
 
   public Challenge(int id) {
-    this("unsolved", id);
+    this(id, false);
   }
 
-  public Challenge(String status, int id) {
-    this(status, id, null);
-  }
-
-  public Challenge(String status, int id, String flag) {
-    this.status = status;
+  public Challenge(int id, boolean solved) {
     this.id = id;
-    this.flag = flag;
+    this.solved = solved;
   }
 
   public int getId() {
     return id;
   }
 
-  public String getStatus() {
-    return status;
+  public boolean isSolved() {
+    return solved;
   }
 
-  public String getFlag() {
-    return flag;
+  public void setSolved(boolean b) {
+    solved = b;
   }
 }
